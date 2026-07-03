@@ -32,7 +32,9 @@ public class User {
     @Column(name = "level")
     private Integer level = 1;
 
-    // 构造方法
+    @Column(name = "hell_money")
+    private Integer hellMoney = 100;
+
     public User() {}
 
     public User(String username, String password, String email) {
@@ -43,9 +45,9 @@ public class User {
         this.graveStyle = "CLASSIC";
         this.status = "ALIVE";
         this.level = 1;
+        this.hellMoney = 100;
     }
 
-    // Getter 和 Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -69,4 +71,7 @@ public class User {
 
     public Integer getLevel() { return level; }
     public void setLevel(Integer level) { this.level = level; }
+
+    public Integer getHellMoney() { return hellMoney; }
+    public void setHellMoney(Integer hellMoney) { this.hellMoney = hellMoney; }
 }
