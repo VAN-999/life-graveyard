@@ -1,6 +1,7 @@
 package com.graveyard.backend;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
@@ -48,7 +49,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 购买装饰品（每次购买都插入新记录） ======
+    // ====== 购买装饰品 ======
     @PostMapping("/buy")
     public Map<String, Object> buy(@RequestParam Long userId, @RequestParam Long decorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -79,7 +80,7 @@ public class DecorationController {
         user.setHellMoney(user.getHellMoney() - decoration.getPrice());
         userRepository.save(user);
 
-        // 每次购买都插入一条新记录（不再使用 quantity）
+        // 每次购买都插入一条新记录
         UserDecoration userDeco = new UserDecoration(userId, decorationId);
         UserDecoration saved = userDecorationRepository.save(userDeco);
 
@@ -93,7 +94,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 查看用户拥有的装饰品（每条记录独立显示） ======
+    // ====== 查看用户拥有的装饰品 ======
     @GetMapping("/my")
     public Map<String, Object> myDecorations(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
@@ -117,7 +118,6 @@ public class DecorationController {
                 item.put("icon", d.getIcon());
                 item.put("category", d.getCategory());
                 item.put("isEquipped", ud.getIsEquipped());
-                // 去掉 quantity，每个记录都是独立的
                 item.put("userDecorationId", ud.getId());
                 result.add(item);
             }
@@ -129,7 +129,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 装备装饰品 ======
+    // ====== 装备装饰品（不互斥，可同时装备多个） ======
     @PostMapping("/equip")
     public Map<String, Object> equip(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -148,16 +148,7 @@ public class DecorationController {
             return response;
         }
 
-        // 同分类卸下其他
-        List<UserDecoration> equipped = userDecorationRepository.findByUserIdAndIsEquippedTrue(ud.getUserId());
-        for (UserDecoration e : equipped) {
-            Decoration ed = decorationRepository.findById(e.getDecorationId()).orElse(null);
-            if (ed != null && ed.getCategory().equals(d.getCategory())) {
-                e.setIsEquipped(false);
-                userDecorationRepository.save(e);
-            }
-        }
-
+        // 直接装备，不卸下同分类的其他装饰品
         ud.setIsEquipped(true);
         userDecorationRepository.save(ud);
 
@@ -232,14 +223,13 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 删除装饰品（只删选中的那一个） ======
+    // ====== 删除装饰品（有事务注解，可正常删除） ======
     @DeleteMapping("/delete")
+    @Transactional
     public Map<String, Object> delete(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 删状态
             decorationStateRepository.deleteByUserDecorationId(userDecorationId);
-            // 删装饰记录（只删这一条）
             userDecorationRepository.deleteById(userDecorationId);
             response.put("success", true);
             response.put("message", "已删除");
@@ -250,7 +240,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 从墓场移除装饰 ======
+    // ====== 从墓场移除装饰（不删记录，只删位置） ======
     @PostMapping("/state/delete")
     public Map<String, Object> deleteState(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
