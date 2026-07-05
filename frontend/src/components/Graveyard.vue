@@ -14,8 +14,8 @@
 
     <!-- ====== 可拖拽装饰品 ====== -->
     <div
-        v-for="(deco, index) in editableDecorations"
-        :key="deco.id"
+        v-for="deco in editableDecorations"
+        :key="deco.userDecorationId"
         class="decor-item"
         :style="{
         left: deco.x + '%',
@@ -36,7 +36,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineProps, defineEmits, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import bgImage from '../assets/cemetery-bg.jpg'
 import tombstoneImage from '../assets/tombstone.png'
 import shadowImage from '../assets/tombstone-shadow.png'
@@ -53,7 +53,6 @@ const canvasRef = ref(null)
 const starContainer = ref(null)
 const selectedDecorationId = ref(null)
 
-// ====== 合并装饰品和位置状态 ======
 const editableDecorations = ref([])
 
 watch(() => [props.equippedDecorations, props.decorationStates], () => {
@@ -80,7 +79,6 @@ const mergeDecorations = () => {
   })
 }
 
-// ====== 拖拽逻辑 ======
 let dragData = null
 
 const startDrag = (event, deco) => {
@@ -119,13 +117,11 @@ const stopDrag = () => {
   document.removeEventListener('mouseup', stopDrag)
 }
 
-// ====== 选中 ======
 const selectDecoration = (id) => {
   selectedDecorationId.value = id
   emit('select-decoration', id)
 }
 
-// ====== 星星背景 ======
 const generateStars = () => {
   if (!starContainer.value) return
   for (let i = 0; i < 60; i++) {
@@ -146,7 +142,6 @@ onMounted(() => {
   mergeDecorations()
 })
 
-// ====== 暴露选中状态给父组件 ======
 defineExpose({
   selectedDecorationId,
   editableDecorations
