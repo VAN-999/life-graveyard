@@ -62,7 +62,8 @@ const canvasRef = ref(null)
 const loading = ref(false)
 const errorMsg = ref('')
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// 直接用后端公网地址
+const BACKEND_URL = 'https://life-graveyard-production.up.railway.app'
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {
@@ -74,7 +75,7 @@ const handleLogin = async () => {
   errorMsg.value = ''
 
   try {
-    const response = await axios.post(`${API_BASE}/api/v1/user/login`, {
+    const response = await axios.post(`${BACKEND_URL}/api/v1/user/login`, {
       username: username.value,
       password: password.value
     })
@@ -86,6 +87,7 @@ const handleLogin = async () => {
       errorMsg.value = response.data.message
     }
   } catch (error) {
+    console.error('登录错误:', error)
     errorMsg.value = '服务器连接失败，墓场暂时关闭 ☠️'
   } finally {
     loading.value = false
