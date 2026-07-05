@@ -403,9 +403,18 @@ const filteredDecorations = computed(() => {
 // ====== 加载数据 ======
 const loadUserInfo = async () => {
   const userStr = localStorage.getItem('user')
-  if (!userStr) { window.location.href = '/'; return }
+  if (!userStr) {
+    window.location.href = '/'
+    return
+  }
   const data = JSON.parse(userStr)
-  if (data.userId === undefined && data.id !== undefined) data.userId = data.id
+  // 兼容两种字段名
+  if (data.userId === undefined && data.id !== undefined) {
+    data.userId = data.id
+  }
+  if (data.id === undefined && data.userId !== undefined) {
+    data.id = data.userId
+  }
   user.value = data
 }
 
