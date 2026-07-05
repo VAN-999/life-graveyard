@@ -74,11 +74,20 @@ const handleLogin = async () => {
   loading.value = true
   errorMsg.value = ''
 
+  // 日志
+  console.log('🚀 请求地址:', `${BACKEND_URL}/api/v1/user/login`)
+  console.log('📦 请求数据:', { username: username.value, password: password.value })
+
   try {
     const response = await axios.post(`${BACKEND_URL}/api/v1/user/login`, {
       username: username.value,
       password: password.value
+    }, {
+      // 允许跨域携带凭证
+      withCredentials: false
     })
+
+    console.log('✅ 登录响应:', response.data)
 
     if (response.data.success) {
       localStorage.setItem('user', JSON.stringify(response.data))
@@ -87,7 +96,11 @@ const handleLogin = async () => {
       errorMsg.value = response.data.message
     }
   } catch (error) {
-    console.error('登录错误:', error)
+    console.error('❌ 登录错误:', error)
+    if (error.response) {
+      console.error('响应状态:', error.response.status)
+      console.error('响应数据:', error.response.data)
+    }
     errorMsg.value = '服务器连接失败，墓场暂时关闭 ☠️'
   } finally {
     loading.value = false
