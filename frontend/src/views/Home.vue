@@ -49,6 +49,7 @@
             :epitaph="epitaph"
             :equippedDecorations="equippedDecorations"
             :decorationStates="decorationStates"
+            :selectedId="selectedDecorationId"
             @update-state="onUpdateState"
             @select-decoration="onSelectDecoration"
         />

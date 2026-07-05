@@ -22,7 +22,7 @@
         transform: `translate(-50%, -50%) rotate(${deco.rotation || 0}deg) scale(${deco.scale || 1})`,
         zIndex: deco.zIndex || 0,
         cursor: 'grab',
-        border: selectedDecorationId === deco.id ? '2px solid #ff4444' : 'none',
+        border: selectedId === deco.id ? '2px solid #ff4444' : 'none',
         borderRadius: '4px',
         padding: '2px'
       }"
@@ -43,14 +43,15 @@ import shadowImage from '../assets/tombstone-shadow.png'
 const props = defineProps({
   username: { type: String, default: '安息于此' },
   equippedDecorations: { type: Array, default: () => [] },
-  decorationStates: { type: Array, default: () => [] }
+  decorationStates: { type: Array, default: () => [] },
+  selectedId: { type: Number, default: null }
 })
 
 const emit = defineEmits(['update-state', 'select-decoration'])
 
 const canvasRef = ref(null)
 const starContainer = ref(null)
-const selectedDecorationId = ref(null)
+
 const editableDecorations = ref([])
 
 watch(
@@ -98,7 +99,6 @@ let dragData = null
 const startDrag = (event, deco) => {
   if (event.button !== 0) return
   event.preventDefault()
-  selectedDecorationId.value = deco.id
 
   const rect = canvasRef.value.getBoundingClientRect()
   dragData = {
@@ -132,7 +132,6 @@ const stopDrag = () => {
 }
 
 const selectDecoration = (id) => {
-  selectedDecorationId.value = id
   emit('select-decoration', id)
 }
 
@@ -157,7 +156,6 @@ onMounted(() => {
 })
 
 defineExpose({
-  selectedDecorationId,
   editableDecorations
 })
 </script>
