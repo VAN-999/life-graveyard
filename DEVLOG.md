@@ -105,6 +105,68 @@
 - 补完注册功能
 - 装修墓场弹窗
 
+## 2026-07-05 Day 3
+
+### 今天做了什么
+
+**部署上线**
+- 前端部署到 Railway：`https://ravishing-rebirth-production-acfe.up.railway.app`
+- 后端部署到 Railway：`https://life-graveyard-production.up.railway.app`
+- 配置 Railway MySQL 数据库，连接生产环境
+- 解决跨域问题，前后端联调成功
+
+**装饰系统重构（核心）**
+- 彻底重构了装饰品存储逻辑：从 `quantity` 合并存储改为每条记录独立存储
+- 每次购买都生成独立的 `user_decorations` 记录，每个装饰品有自己的 ID
+- 解决了“拖拽一个另一个跟着乱跑”的问题（用 `userDecorationId` 作为唯一 key）
+- 解决了“装备第二个第一个消失”的问题（移除同分类互斥逻辑）
+- 解决了“删除功能没用”的问题（后端删除方法加了 `@Transactional`）
+- 解决了“红框残留”的问题（`selectedId` 通过 props 传递到 `Graveyard` 组件）
+
+**后端改动**
+- `DecorationController.java`：购买、装备、删除逻辑全部重构
+- `UserDecoration.java`：去掉 `quantity` 字段
+- `DecorationState.java`：添加 `@JsonProperty("zIndex")` 解决字段映射问题
+
+**前端改动**
+- `Home.vue`：背包独立显示每个装饰品，添加删除按钮
+- `Graveyard.vue`：接收 `selectedId` prop，红框状态由父组件控制
+
+**数据库**
+- 清理了旧的 `decoration_states` 和 `user_decorations` 数据
+
+### 遇到的问题
+
+1. 删除装饰品报 `No EntityManager with actual transaction available`
+   → 删除方法加 `@Transactional` 解决
+
+2. 装备第二个装饰品，第一个自动消失
+   → 移除 `equip` 方法里的同分类互斥逻辑
+
+3. 红框点击 ✕ 后不消失
+   → `selectedId` 通过 props 传递到子组件，由父组件统一控制
+
+4. 部署后前端图片 404
+   → 装饰品图片移到 `public/assets/decor/`，数据库路径改为 `/assets/decor/xxx.png`
+
+### 项目当前状态
+
+- 购买装饰品：✅ 每次购买独立记录
+- 背包显示：✅ 每个装饰品独立显示
+- 装备/卸下：✅ 互不干扰
+- 拖拽移动：✅ 独立操作
+- 删除装饰品：✅ 只删选中的那一个
+- 位置保存：✅ 保存到数据库
+- 红框状态：✅ 正确显示和清除
+- 公网访问：✅ 前端 + 后端已部署
+
+### 明天计划
+
+- 移动端适配（手机打开能正常用）
+- 墓碑换皮肤功能
+- 环境特效（雾、雪、萤火虫）
+- 整体稳定性测试
+
 ### 今日荒诞总结
 
-"今天终于看见了墓园长什么样。虽然墓碑还是有点丑，但至少能看见字了。比昨天强。"
+“今天把装饰系统拆了重做，从‘一捆蜡烛’变成了‘一根一根的蜡烛’。虽然过程很痛苦，但至少现在拖拽一个不会让另一个跟着跑了。而且这堆代码现在全世界都能看到了。”
