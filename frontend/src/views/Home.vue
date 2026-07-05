@@ -1,9 +1,7 @@
 <template>
   <div class="min-h-screen bg-[#0a0a0a] text-white relative overflow-hidden">
-    <!-- 粒子背景 -->
     <canvas ref="canvasRef" class="fixed inset-0 w-full h-full z-0"></canvas>
 
-    <!-- ====== 顶部导航栏 ====== -->
     <header class="relative z-10 flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-black/30 backdrop-blur-sm">
       <div class="flex items-center gap-4">
         <span class="text-2xl">⚰️</span>
@@ -17,10 +15,9 @@
       </div>
     </header>
 
-    <!-- ====== 主区域 ====== -->
     <main class="relative z-10 flex flex-1 h-[calc(100vh-80px)] gap-4 p-4 overflow-hidden">
 
-      <!-- ====== 左侧：数据卡片 ====== -->
+      <!-- ====== 左侧数据卡片 ====== -->
       <aside class="w-56 flex flex-col gap-3 overflow-y-auto">
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">🏃 今日步数</div>
@@ -40,19 +37,18 @@
         </div>
       </aside>
 
-      <!-- ====== 中间：墓场 ====== -->
+      <!-- ====== 中间墓场 ====== -->
       <section class="flex-1 flex flex-col items-center justify-center bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden">
         <Graveyard
             :username="user?.username || '墓场主'"
             :epitaph="epitaph"
             :equippedDecorations="equippedDecorations"
-            tomb-style="point"
+            tomb-style="arc"
         />
       </section>
 
       <!-- ====== 右侧：报告 + 任务 ====== -->
       <aside class="w-64 flex flex-col gap-3 overflow-y-auto">
-        <!-- 今日死亡报告 -->
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm flex-1">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">💀 今日死亡报告</div>
           <div class="flex items-center gap-3 mb-2">
@@ -64,7 +60,7 @@
           <p class="text-sm text-gray-300 line-clamp-3">{{ deathReason || '今天还没死，等晚上吧' }}</p>
         </div>
 
-        <!-- 任务进度 -->
+        <!-- ====== 任务卡片 ====== -->
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm">
           <div class="flex items-center justify-between">
             <span class="text-gray-400 text-xs uppercase tracking-widest">📋 今日任务</span>
@@ -73,10 +69,150 @@
           <div class="w-full h-1.5 bg-gray-700 rounded-full mt-2 overflow-hidden">
             <div class="h-full bg-red-600 rounded-full transition-all" :style="{ width: taskPercent + '%' }"></div>
           </div>
-          <p class="text-xs text-gray-500 mt-2">{{ taskProgress }} / {{ taskTotal }} 已完成</p>
+
+          <div class="mt-3 space-y-3 max-h-60 overflow-y-auto">
+            <!-- 未完成 -->
+            <div v-if="incompleteTasks.length">
+              <div class="text-xs text-gray-500 mb-1">⏳ 未完成</div>
+              <div
+                  v-for="task in incompleteTasks"
+                  :key="task.userTaskId"
+                  class="flex items-center justify-between p-2 rounded-lg bg-black/30 hover:bg-black/50 transition cursor-pointer"
+                  @click="openTaskDetail(task)"
+              >
+                <span class="text-sm truncate">{{ task.name }}</span>
+                <span class="text-xs text-gray-500 flex-shrink-0">+{{ task.rewardMoney }}冥币</span>
+              </div>
+            </div>
+
+            <!-- 可领取 -->
+            <div v-if="claimableTasks.length">
+              <div class="text-xs text-green-400 mb-1">✅ 可领取</div>
+              <div
+                  v-for="task in claimableTasks"
+                  :key="task.userTaskId"
+                  class="flex items-center justify-between p-2 rounded-lg bg-green-900/20 hover:bg-green-900/30 border border-green-700/30 transition cursor-pointer"
+                  @click="openTaskDetail(task)"
+              >
+                <span class="text-sm truncate">{{ task.name }}</span>
+                <span class="text-xs text-yellow-400 flex-shrink-0">点击领取 →</span>
+              </div>
+            </div>
+
+            <!-- 已领取 -->
+            <div v-if="claimedTasks.length">
+              <div class="text-xs text-gray-600 mb-1">💰 已领取</div>
+              <div
+                  v-for="task in claimedTasks"
+                  :key="task.userTaskId"
+                  class="flex items-center justify-between p-2 rounded-lg bg-gray-800/30 opacity-60"
+              >
+                <span class="text-sm truncate text-gray-500">{{ task.name }}</span>
+                <span class="text-xs text-gray-600 flex-shrink-0">已领</span>
+              </div>
+            </div>
+
+            <div v-if="!taskList.length" class="text-center text-gray-500 text-sm py-4">
+              今天没有任务，去提交数据试试
+            </div>
+          </div>
+
+          <button
+              @click="showDataModal = true"
+              class="mt-3 w-full bg-white/10 hover:bg-white/20 border border-gray-600 text-white font-medium py-2 rounded-lg transition text-sm"
+          >
+            📊 提交今日数据
+          </button>
         </div>
       </aside>
     </main>
+
+    <!-- ====== 任务详情弹窗 ====== -->
+    <div v-if="showTaskDetail && selectedTask" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full mx-4">
+        <h3 class="text-xl font-bold text-white mb-2">{{ selectedTask.name }}</h3>
+        <p class="text-gray-400 text-sm mb-4">{{ selectedTask.description }}</p>
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-gray-500 text-sm">💰 奖励</span>
+          <span class="text-yellow-400 font-bold">+{{ selectedTask.rewardMoney }} 冥币</span>
+        </div>
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-gray-500 text-sm">📊 状态</span>
+          <span v-if="selectedTask.isCompleted" class="text-green-400">✅ 已完成</span>
+          <span v-else-if="selectedTask.isClaimed" class="text-gray-500">💰 已领取</span>
+          <span v-else class="text-gray-500">⏳ 未完成</span>
+        </div>
+        <div class="flex gap-2">
+          <button
+              v-if="selectedTask.isCompleted && !selectedTask.isClaimed"
+              @click="claimReward(selectedTask.userTaskId)"
+              class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg transition"
+          >
+            领取奖励 💀
+          </button>
+          <button
+              @click="closeTaskDetail"
+              class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-lg transition"
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 数据提交弹窗 ====== -->
+    <div v-if="showDataModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold text-white mb-4">📊 提交今日数据</h3>
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-gray-400 text-sm">步数</label>
+            <input v-model.number="dataForm.steps" type="number" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="0" />
+          </div>
+          <div>
+            <label class="text-gray-400 text-sm">屏幕时间（分钟）</label>
+            <input v-model.number="dataForm.screenTimeMinutes" type="number" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="0" />
+          </div>
+          <div>
+            <label class="text-gray-400 text-sm">键盘敲击次数</label>
+            <input v-model.number="dataForm.keyPresses" type="number" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="0" />
+          </div>
+          <div>
+            <label class="text-gray-400 text-sm">睡眠（小时）</label>
+            <input v-model.number="dataForm.sleepHours" type="number" step="0.5" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="0" />
+          </div>
+          <div>
+            <label class="text-gray-400 text-sm">APP打开次数</label>
+            <input v-model.number="dataForm.appOpens" type="number" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="0" />
+          </div>
+          <div>
+            <label class="text-gray-400 text-sm">最后活跃时间（如 01:23）</label>
+            <input v-model="dataForm.lastActiveAt" type="text" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="01:23" />
+          </div>
+          <div class="flex items-center gap-3">
+            <input v-model="dataForm.momentsViewed" type="checkbox" class="w-4 h-4" />
+            <label class="text-gray-400 text-sm">今天看了朋友圈</label>
+          </div>
+        </div>
+
+        <div class="flex gap-2 mt-4">
+          <button
+              @click="submitData"
+              :disabled="submitting"
+              class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg transition disabled:opacity-50"
+          >
+            {{ submitting ? '提交中...' : '提交数据 💀' }}
+          </button>
+          <button
+              @click="showDataModal = false"
+              class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-lg transition"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -88,55 +224,201 @@ import Graveyard from '../components/Graveyard.vue'
 const user = ref(null)
 const todayData = ref(null)
 const reportData = ref(null)
-const taskData = ref([])
+const equippedDecorations = ref([])
 
 const epitaph = computed(() => reportData.value?.epitaph || '此人安息于此')
 const deathScore = computed(() => reportData.value?.deathScore || 0)
 const deathReason = computed(() => reportData.value?.deathReason || '今天还没死')
-const equippedDecorations = ref([])
+
+const taskList = ref([])
 const taskProgress = ref(0)
 const taskTotal = ref(0)
 const taskPercent = computed(() => taskTotal.value ? Math.round((taskProgress.value / taskTotal.value) * 100) : 0)
 
+const incompleteTasks = computed(() => {
+  return taskList.value.filter(t => !t.isCompleted && !t.isClaimed)
+})
+const claimableTasks = computed(() => {
+  return taskList.value.filter(t => t.isCompleted && !t.isClaimed)
+})
+const claimedTasks = computed(() => {
+  return taskList.value.filter(t => t.isClaimed)
+})
+
+const showTaskDetail = ref(false)
+const selectedTask = ref(null)
+
+const showDataModal = ref(false)
+const submitting = ref(false)
+const dataForm = ref({
+  steps: 0,
+  screenTimeMinutes: 0,
+  keyPresses: 0,
+  sleepHours: 0,
+  appOpens: 0,
+  lastActiveAt: '',
+  momentsViewed: false
+})
+
 const canvasRef = ref(null)
 
-const loadData = async () => {
+// ====== 加载用户信息 ======
+const loadUserInfo = async () => {
   const userStr = localStorage.getItem('user')
   if (!userStr) {
     window.location.href = '/'
     return
   }
   user.value = JSON.parse(userStr)
-  const userId = user.value.userId
+}
 
+// ====== 从后端拉取最新用户信息 ======
+const fetchUserInfo = async () => {
+  if (!user.value) return
   try {
-    const dataRes = await axios.get(`/api/v1/daily-data/today?userId=${userId}`)
-    if (dataRes.data.success) todayData.value = dataRes.data.data
-
-    const reportRes = await axios.get(`/api/v1/report/today?userId=${userId}`)
-    if (reportRes.data.success) reportData.value = reportRes.data.report
-
-    const taskRes = await axios.get(`/api/v1/tasks/today?userId=${userId}`)
-    if (taskRes.data.success) {
-      taskData.value = taskRes.data.data
-      taskTotal.value = taskRes.data.totalCount
-      taskProgress.value = taskRes.data.completedCount
+    const res = await axios.get(`/api/v1/user/info?userId=${user.value.userId}`)
+    if (res.data.success) {
+      user.value = res.data.data
+      localStorage.setItem('user', JSON.stringify(res.data.data))
     }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
 
-    const decoRes = await axios.get(`/api/v1/decorations/my?userId=${userId}`)
-    if (decoRes.data.success) {
-      equippedDecorations.value = decoRes.data.data.filter(d => d.isEquipped)
+// ====== 加载任务 ======
+const loadTasks = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`/api/v1/tasks/today?userId=${user.value.userId}`)
+    if (res.data.success) {
+      taskList.value = res.data.data
+      taskTotal.value = res.data.totalCount
+      taskProgress.value = res.data.completedCount
     }
+  } catch (error) {
+    console.error('加载任务失败:', error)
+  }
+}
+
+// ====== 加载今日数据 ======
+const loadTodayData = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`/api/v1/daily-data/today?userId=${user.value.userId}`)
+    if (res.data.success) todayData.value = res.data.data
   } catch (error) {
     console.error('加载数据失败:', error)
   }
 }
 
+// ====== 加载报告 ======
+const loadReport = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`/api/v1/report/today?userId=${user.value.userId}`)
+    if (res.data.success) reportData.value = res.data.report
+  } catch (error) {
+    console.error('加载报告失败:', error)
+  }
+}
+
+// ====== 加载装饰品 ======
+const loadDecorations = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`/api/v1/decorations/my?userId=${user.value.userId}`)
+    if (res.data.success) {
+      equippedDecorations.value = res.data.data.filter(d => d.isEquipped)
+    }
+  } catch (error) {
+    console.error('加载装饰失败:', error)
+  }
+}
+
+// ====== 加载所有数据 ======
+const loadData = async () => {
+  await loadUserInfo()
+  await loadTasks()
+  await loadTodayData()
+  await loadReport()
+  await loadDecorations()
+}
+
+// ====== 任务操作 ======
+const openTaskDetail = (task) => {
+  selectedTask.value = task
+  showTaskDetail.value = true
+}
+
+const closeTaskDetail = () => {
+  showTaskDetail.value = false
+  selectedTask.value = null
+}
+
+// ====== 领取奖励 ======
+const claimReward = async (userTaskId) => {
+  try {
+    const res = await axios.post(`/api/v1/tasks/claim?userTaskId=${userTaskId}`)
+    if (res.data.success) {
+      alert(`✅ ${res.data.message}`)
+      await loadTasks()
+      await fetchUserInfo()
+      await loadDecorations()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('领取失败，墓场暂时罢工 ☠️')
+  }
+}
+
+// ====== 提交数据 ======
+const submitData = async () => {
+  if (!user.value) return
+  submitting.value = true
+
+  try {
+    const payload = {
+      userId: user.value.userId,
+      steps: dataForm.value.steps,
+      screenTimeMinutes: dataForm.value.screenTimeMinutes,
+      keyPresses: dataForm.value.keyPresses,
+      sleepHours: dataForm.value.sleepHours,
+      appOpens: dataForm.value.appOpens,
+      lastActiveAt: dataForm.value.lastActiveAt || null,
+      momentsViewed: dataForm.value.momentsViewed
+    }
+
+    const res = await axios.post('/api/v1/daily-data/submit', payload)
+    if (res.data.success) {
+      alert('✅ 数据提交成功！')
+      showDataModal.value = false
+      dataForm.value = { steps: 0, screenTimeMinutes: 0, keyPresses: 0, sleepHours: 0, appOpens: 0, lastActiveAt: '', momentsViewed: false }
+      await loadTodayData()
+      await loadReport()
+      try {
+        await axios.post(`/api/v1/tasks/check?userId=${user.value.userId}`)
+      } catch (e) {}
+      await loadTasks()
+      await fetchUserInfo()
+    } else {
+      alert('❌ ' + res.data.message)
+    }
+  } catch (error) {
+    alert('提交失败，墓场暂时罢工 ☠️')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// ====== 退出 ======
 const logout = () => {
   localStorage.removeItem('user')
   window.location.href = '/'
 }
 
+// ====== 粒子背景 ======
 onMounted(() => {
   loadData()
 

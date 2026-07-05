@@ -1,155 +1,176 @@
 <template>
-  <div class="cemetery-box">
-    <!-- 夜空 -->
-    <div class="sky"></div>
-    <!-- 草地 -->
-    <div class="grass"></div>
-    <!-- 月亮 -->
-    <div class="moon" :style="moonStyle"></div>
-    <!-- 鬼火 -->
-    <div class="will-o-wisp" style="left:40%;top:45%;animation-delay:0s;"></div>
-    <div class="will-o-wisp" style="left:65%;top:38%;animation-delay:1.2s;"></div>
-    <div class="will-o-wisp" style="left:22%;top:52%;animation-delay:2.4s;"></div>
+  <div class="cemetery-canvas">
+    <img :src="bgImage" class="bg-image" alt="墓园背景" />
+    <div class="star-container" ref="starContainer"></div>
 
-    <!-- 墓碑 -->
     <div class="tomb-wrap">
-      <svg width="160" height="220" id="tombSvg">
-        <path class="tomb" :d="tombPath" stroke="#666a88" stroke-width="2" fill="#3a3d4f" />
-        <text x="80" y="110" class="tomb-text" text-anchor="middle" fill="#c9cde0" font-size="14">
-          {{ username }}
-        </text>
-      </svg>
+      <div class="tomb-group">
+        <div class="shadow-wrapper">
+          <img :src="shadowImage" class="tomb-shadow-img" alt="阴影" />
+        </div>
+        <img :src="tombstoneImage" class="tomb-png" alt="墓碑" />
+      </div>
     </div>
 
-    <!-- 装饰品 -->
-    <div v-for="(deco, index) in equippedDecorations" :key="deco.id"
-         class="decorate-item"
-         :style="getDecorationStyle(index)">
-      {{ deco.icon }}
+    <div class="decor-container">
+      <div
+          v-for="(deco, index) in equippedDecorations"
+          :key="deco.id"
+          class="decor-item"
+          :style="getDecorationStyle(index)"
+      >
+        <span class="deco-emoji">{{ deco.icon }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import bgImage from '../assets/cemetery-bg.jpg'
+import tombstoneImage from '../assets/tombstone.png'
+import shadowImage from '../assets/tombstone-shadow.png'
 
 const props = defineProps({
-  username: { type: String, default: '无名逝者' },
-  epitaph: { type: String, default: '此人安息于此' },
-  equippedDecorations: { type: Array, default: () => [] },
-  tombStyle: { type: String, default: 'point' } // point, round, square
+  username: { type: String, default: '安息于此' },
+  equippedDecorations: { type: Array, default: () => [] }
 })
 
-// 墓碑形状
-const tombPath = computed(() => {
-  switch (props.tombStyle) {
-    case 'point':
-      return 'M20 210 L20 70 L80 10 L140 70 L140 210 Z'
-    case 'round':
-      return 'M20 210 L20 80 Q80 20 140 80 L140 210 Z'
-    case 'square':
-      return 'M20 210 L20 30 L140 30 L140 210 Z'
-    default:
-      return 'M20 210 L20 70 L80 10 L140 70 L140 210 Z'
+const starContainer = ref(null)
+
+const generateStars = () => {
+  if (!starContainer.value) return
+  for (let i = 0; i < 60; i++) {
+    const star = document.createElement('div')
+    star.className = 'star-item'
+    const size = Math.random() * 2.5 + 0.5
+    star.style.width = size + 'px'
+    star.style.height = size + 'px'
+    star.style.left = Math.random() * 100 + '%'
+    star.style.top = Math.random() * 40 + '%'
+    star.style.animationDelay = Math.random() * 3 + 's'
+    starContainer.value.appendChild(star)
   }
-})
+}
 
-// 月亮尺寸（可配置）
-const moonSize = ref(60)
-const moonStyle = computed(() => ({
-  width: moonSize.value + 'px',
-  height: moonSize.value + 'px'
-}))
-
-// 装饰品位置（围绕墓碑摆放）
 const getDecorationStyle = (index) => {
   const positions = [
-    { left: '70%', top: '75%' },
-    { left: '78%', top: '72%' },
-    { left: '65%', top: '78%' },
-    { left: '82%', top: '80%' }
+    { left: '55%', top: '72%' },
+    { left: '70%', top: '68%' },
+    { left: '48%', top: '78%' },
+    { left: '78%', top: '75%' }
   ]
   const pos = positions[index % positions.length]
   return {
     position: 'absolute',
     left: pos.left,
     top: pos.top,
+    transform: 'translate(-50%, -50%)',
+    zIndex: 10,
     fontSize: '28px',
-    cursor: 'pointer',
-    filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.3))'
+    cursor: 'pointer'
   }
 }
+
+onMounted(() => {
+  generateStars()
+})
 </script>
 
 <style scoped>
-.cemetery-box {
+.cemetery-canvas {
   width: 100%;
   height: 100%;
   position: relative;
   overflow: hidden;
   border-radius: 16px;
+  background: #0a0c18;
 }
 
-/* 夜空 */
-.sky {
+.bg-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 70%;
-  background: linear-gradient(#060814, #10132b);
-  position: absolute;
-  top: 0;
-  left: 0;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  z-index: 0;
 }
 
-/* 草地 */
-.grass {
-  width: 100%;
-  height: 30%;
-  background: #121a16;
+.star-container {
   position: absolute;
-  bottom: 0;
-  left: 0;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
 }
-
-/* 月亮 */
-.moon {
+.star-item {
   position: absolute;
-  background: #eef2ff;
+  background: #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 60px #cdd6ff, 0 0 100px #8899dd66;
-  left: 12%;
-  top: 15%;
-  transition: all 0.5s ease;
+  animation: starTwinkle 3s infinite ease-in-out;
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
 }
 
-/* 墓碑容器 */
 .tomb-wrap {
   position: absolute;
-  right: 12%;
-  bottom: 10%;
+  right: 18%;
+  bottom: 18%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-/* 墓碑文字 */
-.tomb-text {
-  fill: #c9cde0;
-  text-anchor: middle;
-  font-size: 14px;
-  font-family: 'Times New Roman', serif;
+.tomb-group {
+  position: relative;
+  display: inline-block;
 }
 
-/* 鬼火浮动 */
-@keyframes float {
-  0% { transform: translateY(0); opacity: 0.7; }
-  50% { transform: translateY(-12px); opacity: 1; }
-  100% { transform: translateY(0); opacity: 0.7; }
-}
-
-.will-o-wisp {
+.shadow-wrapper {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #aaffcc;
-  border-radius: 50%;
-  box-shadow: 0 0 12px #88ffbb;
-  animation: float 4s infinite ease-in-out;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  width: 280px;
+  pointer-events: none;
+}
+
+.tomb-shadow-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  opacity: 0.35;
+}
+
+.tomb-png {
+  position: relative;
+  z-index: 2;
+  width: 358px;
+  height: auto;
+  display: block;
+}
+
+.decor-container {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.decor-item {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.15));
+}
+.decor-item:hover {
+  transform: scale(1.2) rotate(8deg);
+}
+.deco-emoji {
+  font-size: 28px;
+  display: block;
 }
 </style>
