@@ -1,5 +1,5 @@
 <template>
-  <div class="cemetery-canvas">
+  <div class="cemetery-canvas" ref="canvasRef">
     <img :src="bgImage" class="bg-image" alt="墓园背景" />
     <div class="star-container" ref="starContainer"></div>
 
@@ -12,32 +12,120 @@
       </div>
     </div>
 
-    <div class="decor-container">
-      <div
-          v-for="(deco, index) in equippedDecorations"
-          :key="deco.id"
-          class="decor-item"
-          :style="getDecorationStyle(index)"
-      >
-        <span class="deco-emoji">{{ deco.icon }}</span>
-      </div>
+    <!-- ====== 可拖拽装饰品 ====== -->
+    <div
+        v-for="(deco, index) in editableDecorations"
+        :key="deco.id"
+        class="decor-item"
+        :style="{
+        left: deco.x + '%',
+        top: deco.y + '%',
+        transform: `translate(-50%, -50%) rotate(${deco.rotation || 0}deg) scale(${deco.scale || 1})`,
+        zIndex: deco.zIndex || 0,
+        cursor: 'grab',
+        border: selectedDecorationId === deco.id ? '2px solid #ff4444' : 'none',
+        borderRadius: '4px',
+        padding: '2px'
+      }"
+        @mousedown="startDrag($event, deco)"
+        @click.stop="selectDecoration(deco.id)"
+    >
+      <img :src="deco.icon" class="w-12 h-12 object-contain" draggable="false" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, defineProps, defineEmits, watch } from 'vue'
 import bgImage from '../assets/cemetery-bg.jpg'
 import tombstoneImage from '../assets/tombstone.png'
 import shadowImage from '../assets/tombstone-shadow.png'
 
 const props = defineProps({
   username: { type: String, default: '安息于此' },
-  equippedDecorations: { type: Array, default: () => [] }
+  equippedDecorations: { type: Array, default: () => [] },
+  decorationStates: { type: Array, default: () => [] }
 })
 
-const starContainer = ref(null)
+const emit = defineEmits(['update-state', 'select-decoration'])
 
+const canvasRef = ref(null)
+const starContainer = ref(null)
+const selectedDecorationId = ref(null)
+
+// ====== 合并装饰品和位置状态 ======
+const editableDecorations = ref([])
+
+watch(() => [props.equippedDecorations, props.decorationStates], () => {
+  mergeDecorations()
+}, { deep: true })
+
+const mergeDecorations = () => {
+  const statesMap = {}
+  props.decorationStates.forEach(s => {
+    statesMap[s.userDecorationId] = s
+  })
+
+  editableDecorations.value = props.equippedDecorations.map(deco => {
+    const state = statesMap[deco.userDecorationId]
+    return {
+      ...deco,
+      x: state?.x ?? (50 + (Math.random() - 0.5) * 30),
+      y: state?.y ?? (50 + (Math.random() - 0.5) * 30),
+      rotation: state?.rotation ?? 0,
+      scale: state?.scale ?? 1,
+      zIndex: state?.zIndex ?? 0,
+      isVisible: state?.isVisible !== false
+    }
+  })
+}
+
+// ====== 拖拽逻辑 ======
+let dragData = null
+
+const startDrag = (event, deco) => {
+  if (event.button !== 0) return
+  event.preventDefault()
+  selectedDecorationId.value = deco.id
+
+  const rect = canvasRef.value.getBoundingClientRect()
+  dragData = {
+    deco: deco,
+    offsetX: (event.clientX - rect.left) / rect.width * 100 - deco.x,
+    offsetY: (event.clientY - rect.top) / rect.height * 100 - deco.y
+  }
+
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+const onDrag = (event) => {
+  if (!dragData) return
+  const rect = canvasRef.value.getBoundingClientRect()
+  let x = (event.clientX - rect.left) / rect.width * 100 - dragData.offsetX
+  let y = (event.clientY - rect.top) / rect.height * 100 - dragData.offsetY
+  x = Math.max(0, Math.min(100, x))
+  y = Math.max(0, Math.min(100, y))
+
+  const deco = dragData.deco
+  deco.x = x
+  deco.y = y
+  emit('update-state', deco)
+}
+
+const stopDrag = () => {
+  dragData = null
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+}
+
+// ====== 选中 ======
+const selectDecoration = (id) => {
+  selectedDecorationId.value = id
+  emit('select-decoration', id)
+}
+
+// ====== 星星背景 ======
 const generateStars = () => {
   if (!starContainer.value) return
   for (let i = 0; i < 60; i++) {
@@ -53,27 +141,15 @@ const generateStars = () => {
   }
 }
 
-const getDecorationStyle = (index) => {
-  const positions = [
-    { left: '55%', top: '72%' },
-    { left: '70%', top: '68%' },
-    { left: '48%', top: '78%' },
-    { left: '78%', top: '75%' }
-  ]
-  const pos = positions[index % positions.length]
-  return {
-    position: 'absolute',
-    left: pos.left,
-    top: pos.top,
-    transform: 'translate(-50%, -50%)',
-    zIndex: 10,
-    fontSize: '28px',
-    cursor: 'pointer'
-  }
-}
-
 onMounted(() => {
   generateStars()
+  mergeDecorations()
+})
+
+// ====== 暴露选中状态给父组件 ======
+defineExpose({
+  selectedDecorationId,
+  editableDecorations
 })
 </script>
 
@@ -154,23 +230,14 @@ onMounted(() => {
   display: block;
 }
 
-.decor-container {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-}
 .decor-item {
+  position: absolute;
+  z-index: 4;
   pointer-events: auto;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  filter: drop-shadow(0 0 6px rgba(255,255,255,0.15));
+  user-select: none;
+  transition: border 0.1s ease;
 }
-.decor-item:hover {
-  transform: scale(1.2) rotate(8deg);
-}
-.deco-emoji {
-  font-size: 28px;
-  display: block;
+.decor-item:active {
+  cursor: grabbing;
 }
 </style>

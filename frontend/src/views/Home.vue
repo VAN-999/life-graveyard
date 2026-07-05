@@ -41,13 +41,27 @@
       </aside>
 
       <!-- 中间墓场 -->
-      <section class="flex-1 flex flex-col items-center justify-center bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden">
+      <section class="flex-1 flex flex-col bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden">
         <Graveyard
+            ref="graveyardRef"
             :username="user?.username || '墓场主'"
             :epitaph="epitaph"
             :equippedDecorations="equippedDecorations"
-            tomb-style="arc"
+            :decorationStates="decorationStates"
+            @update-state="onUpdateState"
+            @select-decoration="onSelectDecoration"
         />
+
+        <!-- 编辑器工具栏（选中装饰品时显示） -->
+        <div v-if="selectedDecorationId" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-2 bg-black/70 border border-gray-700 rounded-xl p-2 backdrop-blur-sm">
+          <button @click="rotateDecoration(-15)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">↺ -15°</button>
+          <button @click="rotateDecoration(15)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">↻ +15°</button>
+          <button @click="scaleDecoration(0.9)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">🔍−</button>
+          <button @click="scaleDecoration(1.1)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">🔍+</button>
+          <button @click="moveLayer('up')" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">⬆ 上移</button>
+          <button @click="moveLayer('down')" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">⬇ 下移</button>
+          <button @click="saveAllStates" class="px-3 py-1 bg-green-700 hover:bg-green-600 rounded-lg text-sm">💾 保存</button>
+        </div>
       </section>
 
       <!-- 右侧面板 -->
@@ -213,7 +227,7 @@
       </div>
     </div>
 
-    <!-- ====== 商店弹窗 ====== -->
+    <!-- ====== 商店 + 背包弹窗 ====== -->
     <div v-if="showShop" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
@@ -221,42 +235,96 @@
           <span class="text-yellow-400 text-sm">💰 {{ user?.hellMoney || 0 }} 冥币</span>
         </div>
 
-        <!-- 分类标签 -->
-        <div class="flex gap-2 mb-4 overflow-x-auto">
+        <div class="flex gap-2 mb-4">
           <button
-              v-for="cat in categories"
-              :key="cat"
-              @click="selectedCategory = cat"
-              class="px-3 py-1 rounded-lg text-sm transition whitespace-nowrap"
-              :class="selectedCategory === cat ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+              @click="shopTab = 'store'"
+              class="px-4 py-1.5 rounded-lg text-sm transition"
+              :class="shopTab === 'store' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
           >
-            {{ cat }}
+            🛒 商店
+          </button>
+          <button
+              @click="shopTab = 'bag'; loadMyDecorations()"
+              class="px-4 py-1.5 rounded-lg text-sm transition"
+              :class="shopTab === 'bag' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+          >
+            🎒 背包 ({{ myDecorations.length }})
           </button>
         </div>
 
-        <!-- 商品列表 -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          <div
-              v-for="item in filteredDecorations"
-              :key="item.id"
-              class="bg-black/40 border border-gray-700 rounded-xl p-3 text-center hover:border-gray-500 transition"
-          >
-            <div class="mb-1">
-              <img :src="item.icon" class="w-16 h-16 object-contain mx-auto" />
-            </div>
-            <div class="text-white font-medium text-sm">{{ item.name }}</div>
-            <div class="text-yellow-400 text-sm">💰 {{ item.price }} 冥币</div>
+        <!-- 商店 -->
+        <div v-if="shopTab === 'store'">
+          <div class="flex gap-2 mb-4 overflow-x-auto">
             <button
-                @click="buyDecoration(item.id)"
-                :disabled="(user?.hellMoney || 0) < item.price || buying"
-                class="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-1.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                v-for="cat in categories"
+                :key="cat"
+                @click="selectedCategory = cat"
+                class="px-3 py-1 rounded-lg text-sm transition whitespace-nowrap"
+                :class="selectedCategory === cat ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
             >
-              {{ (user?.hellMoney || 0) >= item.price ? '购买 💀' : '冥币不足' }}
+              {{ cat }}
             </button>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div
+                v-for="item in filteredDecorations"
+                :key="item.id"
+                class="bg-black/40 border border-gray-700 rounded-xl p-3 text-center hover:border-gray-500 transition"
+            >
+              <div class="mb-1">
+                <img :src="item.icon" class="w-16 h-16 object-contain mx-auto" />
+              </div>
+              <div class="text-white font-medium text-sm">{{ item.name }}</div>
+              <div class="text-yellow-400 text-sm">💰 {{ item.price }} 冥币</div>
+              <button
+                  @click="buyDecoration(item.id)"
+                  :disabled="(user?.hellMoney || 0) < item.price || buying"
+                  class="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-1.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ (user?.hellMoney || 0) >= item.price ? '购买 💀' : '冥币不足' }}
+              </button>
+            </div>
           </div>
         </div>
 
-        <button @click="showShop = false" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition">
+        <!-- 背包 -->
+        <div v-if="shopTab === 'bag'">
+          <div v-if="myDecorations.length === 0" class="text-center text-gray-500 py-8">
+            背包空空如也，去商店买点东西吧 💀
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div
+                v-for="item in myDecorations"
+                :key="item.userDecorationId"
+                class="bg-black/40 border border-gray-700 rounded-xl p-3 text-center hover:border-gray-500 transition"
+            >
+              <div class="mb-1">
+                <img :src="item.icon" class="w-16 h-16 object-contain mx-auto" />
+              </div>
+              <div class="text-white font-medium text-sm">{{ item.name }}</div>
+              <div class="text-xs mt-1" :class="item.isEquipped ? 'text-green-400' : 'text-gray-500'">
+                {{ item.isEquipped ? '✅ 已装备' : '未装备' }}
+              </div>
+              <button
+                  v-if="!item.isEquipped"
+                  @click="equipDecoration(item.userDecorationId)"
+                  class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-1.5 rounded-lg transition"
+              >
+                装备 💀
+              </button>
+              <button
+                  v-else
+                  @click="unequipDecoration(item.userDecorationId)"
+                  class="mt-2 w-full bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-1.5 rounded-lg transition"
+              >
+                卸下
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button @click="closeShop" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition">
           关闭商店
         </button>
       </div>
@@ -265,39 +333,39 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import axios from 'axios'
 import Graveyard from '../components/Graveyard.vue'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://life-graveyard-production.up.railway.app'
 
+// ====== 用户 ======
 const user = ref(null)
 const todayData = ref(null)
 const reportData = ref(null)
 const equippedDecorations = ref([])
+const decorationStates = ref([])
 
-const epitaph = computed(() => reportData.value?.epitaph || '此人安息于此')
-const deathScore = computed(() => reportData.value?.deathScore || 0)
-const deathReason = computed(() => reportData.value?.deathReason || '今天还没死')
+const graveyardRef = ref(null)
+const selectedDecorationId = ref(null)
 
+// ====== 商店 ======
+const showShop = ref(false)
+const shopTab = ref('store')
+const decorations = ref([])
+const selectedCategory = ref('全部')
+const buying = ref(false)
+
+const myDecorations = ref([])
+
+// ====== 任务 ======
 const taskList = ref([])
 const taskProgress = ref(0)
 const taskTotal = ref(0)
-const taskPercent = computed(() => taskTotal.value ? Math.round((taskProgress.value / taskTotal.value) * 100) : 0)
 
-const incompleteTasks = computed(() => {
-  return taskList.value.filter(t => !t.isCompleted && !t.isClaimed)
-})
-const claimableTasks = computed(() => {
-  return taskList.value.filter(t => t.isCompleted && !t.isClaimed)
-})
-const claimedTasks = computed(() => {
-  return taskList.value.filter(t => t.isClaimed)
-})
-
+// ====== 其他 ======
 const showTaskDetail = ref(false)
 const selectedTask = ref(null)
-
 const showDataModal = ref(false)
 const submitting = ref(false)
 const dataForm = ref({
@@ -310,11 +378,17 @@ const dataForm = ref({
   momentsViewed: false
 })
 
-// ====== 商店 ======
-const showShop = ref(false)
-const decorations = ref([])
-const selectedCategory = ref('全部')
-const buying = ref(false)
+const canvasRef = ref(null)
+
+// ====== 计算属性 ======
+const epitaph = computed(() => reportData.value?.epitaph || '此人安息于此')
+const deathScore = computed(() => reportData.value?.deathScore || 0)
+const deathReason = computed(() => reportData.value?.deathReason || '今天还没死')
+const taskPercent = computed(() => taskTotal.value ? Math.round((taskProgress.value / taskTotal.value) * 100) : 0)
+
+const incompleteTasks = computed(() => taskList.value.filter(t => !t.isCompleted && !t.isClaimed))
+const claimableTasks = computed(() => taskList.value.filter(t => t.isCompleted && !t.isClaimed))
+const claimedTasks = computed(() => taskList.value.filter(t => t.isClaimed))
 
 const categories = computed(() => {
   const cats = decorations.value.map(d => d.category)
@@ -326,18 +400,12 @@ const filteredDecorations = computed(() => {
   return decorations.value.filter(d => d.category === selectedCategory.value)
 })
 
-const canvasRef = ref(null)
-
+// ====== 加载数据 ======
 const loadUserInfo = async () => {
   const userStr = localStorage.getItem('user')
-  if (!userStr) {
-    window.location.href = '/'
-    return
-  }
+  if (!userStr) { window.location.href = '/'; return }
   const data = JSON.parse(userStr)
-  if (data.userId === undefined && data.id !== undefined) {
-    data.userId = data.id
-  }
+  if (data.userId === undefined && data.id !== undefined) data.userId = data.id
   user.value = data
 }
 
@@ -349,9 +417,7 @@ const fetchUserInfo = async () => {
       user.value = res.data.data
       localStorage.setItem('user', JSON.stringify(res.data.data))
     }
-  } catch (error) {
-    console.error('获取用户信息失败:', error)
-  }
+  } catch (error) { console.error('获取用户信息失败:', error) }
 }
 
 const loadTasks = async () => {
@@ -367,9 +433,7 @@ const loadTasks = async () => {
       taskTotal.value = res.data.totalCount
       taskProgress.value = res.data.completedCount
     }
-  } catch (error) {
-    console.error('加载任务失败:', error)
-  }
+  } catch (error) { console.error('加载任务失败:', error) }
 }
 
 const loadTodayData = async () => {
@@ -377,9 +441,7 @@ const loadTodayData = async () => {
   try {
     const res = await axios.get(`${API_BASE}/api/v1/daily-data/today?userId=${user.value.id}`)
     if (res.data.success) todayData.value = res.data.data
-  } catch (error) {
-    console.error('加载数据失败:', error)
-  }
+  } catch (error) { console.error('加载数据失败:', error) }
 }
 
 const loadReport = async () => {
@@ -387,9 +449,7 @@ const loadReport = async () => {
   try {
     const res = await axios.get(`${API_BASE}/api/v1/report/today?userId=${user.value.id}`)
     if (res.data.success) reportData.value = res.data.report
-  } catch (error) {
-    console.error('加载报告失败:', error)
-  }
+  } catch (error) { console.error('加载报告失败:', error) }
 }
 
 const loadDecorations = async () => {
@@ -399,9 +459,17 @@ const loadDecorations = async () => {
     if (res.data.success) {
       equippedDecorations.value = res.data.data.filter(d => d.isEquipped)
     }
-  } catch (error) {
-    console.error('加载装饰失败:', error)
-  }
+  } catch (error) { console.error('加载装饰失败:', error) }
+}
+
+const loadDecorationStates = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/states?userId=${user.value.id}`)
+    if (res.data.success) {
+      decorationStates.value = res.data.data
+    }
+  } catch (error) { console.error('加载装饰状态失败:', error) }
 }
 
 const loadDecorationsList = async () => {
@@ -414,9 +482,17 @@ const loadDecorationsList = async () => {
       }
       decorations.value = flat
     }
-  } catch (error) {
-    console.error('加载装饰品列表失败:', error)
-  }
+  } catch (error) { console.error('加载装饰品列表失败:', error) }
+}
+
+const loadMyDecorations = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/my?userId=${user.value.id}`)
+    if (res.data.success) {
+      myDecorations.value = res.data.data
+    }
+  } catch (error) { console.error('加载背包失败:', error) }
 }
 
 const loadData = async () => {
@@ -425,18 +501,14 @@ const loadData = async () => {
   await loadTodayData()
   await loadReport()
   await loadDecorations()
+  await loadDecorationStates()
   await loadDecorationsList()
+  await loadMyDecorations()
 }
 
-const openTaskDetail = (task) => {
-  selectedTask.value = task
-  showTaskDetail.value = true
-}
-
-const closeTaskDetail = () => {
-  showTaskDetail.value = false
-  selectedTask.value = null
-}
+// ====== 任务操作 ======
+const openTaskDetail = (task) => { selectedTask.value = task; showTaskDetail.value = true }
+const closeTaskDetail = () => { showTaskDetail.value = false; selectedTask.value = null }
 
 const claimReward = async (userTaskId) => {
   try {
@@ -454,6 +526,7 @@ const claimReward = async (userTaskId) => {
   }
 }
 
+// ====== 商店操作 ======
 const buyDecoration = async (decorationId) => {
   if (!user.value) return
   buying.value = true
@@ -463,7 +536,9 @@ const buyDecoration = async (decorationId) => {
       alert(`✅ ${res.data.message}`)
       await fetchUserInfo()
       await loadDecorationsList()
+      await loadMyDecorations()
       await loadDecorations()
+      await loadDecorationStates()
     } else {
       alert(`❌ ${res.data.message}`)
     }
@@ -474,10 +549,101 @@ const buyDecoration = async (decorationId) => {
   }
 }
 
+// ====== 背包操作 ======
+const equipDecoration = async (userDecorationId) => {
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/equip?userDecorationId=${userDecorationId}`)
+    if (res.data.success) {
+      alert(`✅ ${res.data.message}`)
+      await loadMyDecorations()
+      await loadDecorations()
+      await loadDecorationStates()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('装备失败，墓场暂时罢工 ☠️')
+  }
+}
+
+const unequipDecoration = async (userDecorationId) => {
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/unequip?userDecorationId=${userDecorationId}`)
+    if (res.data.success) {
+      alert(`✅ ${res.data.message}`)
+      await loadMyDecorations()
+      await loadDecorations()
+      await loadDecorationStates()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('卸下失败，墓场暂时罢工 ☠️')
+  }
+}
+
+// ====== 编辑器操作 ======
+const onSelectDecoration = (id) => {
+  selectedDecorationId.value = id
+}
+
+const onUpdateState = (deco) => {
+  // 实时更新位置（拖拽时）
+  const state = decorationStates.value.find(s => s.userDecorationId === deco.userDecorationId)
+  if (state) {
+    state.x = deco.x
+    state.y = deco.y
+  }
+}
+
+const rotateDecoration = (angle) => {
+  const deco = graveyardRef.value?.editableDecorations?.find(d => d.id === selectedDecorationId.value)
+  if (!deco) return
+  deco.rotation = (deco.rotation || 0) + angle
+  updateState(deco)
+}
+
+const scaleDecoration = (factor) => {
+  const deco = graveyardRef.value?.editableDecorations?.find(d => d.id === selectedDecorationId.value)
+  if (!deco) return
+  deco.scale = Math.max(0.3, Math.min(3, (deco.scale || 1) * factor))
+  updateState(deco)
+}
+
+const moveLayer = (direction) => {
+  const deco = graveyardRef.value?.editableDecorations?.find(d => d.id === selectedDecorationId.value)
+  if (!deco) return
+  deco.zIndex = (deco.zIndex || 0) + (direction === 'up' ? 1 : -1)
+  updateState(deco)
+}
+
+const updateState = (deco) => {
+  const state = decorationStates.value.find(s => s.userDecorationId === deco.userDecorationId)
+  if (state) {
+    state.x = deco.x
+    state.y = deco.y
+    state.rotation = deco.rotation || 0
+    state.scale = deco.scale || 1
+    state.zIndex = deco.zIndex || 0
+  }
+}
+
+const saveAllStates = async () => {
+  if (!user.value) return
+  try {
+    for (const state of decorationStates.value) {
+      await axios.post(`${API_BASE}/api/v1/decorations/state/save`, state)
+    }
+    alert('✅ 所有装饰位置已保存！')
+  } catch (error) {
+    alert('保存失败，墓场暂时罢工 ☠️')
+  }
+}
+
+// ====== 提交数据 ======
 const submitData = async () => {
   if (!user.value) return
   submitting.value = true
-
   try {
     const payload = {
       userId: user.value.id,
@@ -489,7 +655,6 @@ const submitData = async () => {
       lastActiveAt: dataForm.value.lastActiveAt || null,
       momentsViewed: dataForm.value.momentsViewed
     }
-
     const res = await axios.post(`${API_BASE}/api/v1/daily-data/submit`, payload)
     if (res.data.success) {
       alert('✅ 数据提交成功！')
@@ -497,9 +662,7 @@ const submitData = async () => {
       dataForm.value = { steps: 0, screenTimeMinutes: 0, keyPresses: 0, sleepHours: 0, appOpens: 0, lastActiveAt: '', momentsViewed: false }
       await loadTodayData()
       await loadReport()
-      try {
-        await axios.post(`${API_BASE}/api/v1/tasks/check?userId=${user.value.id}`)
-      } catch (e) {}
+      try { await axios.post(`${API_BASE}/api/v1/tasks/check?userId=${user.value.id}`) } catch (e) {}
       await loadTasks()
       await fetchUserInfo()
     } else {
@@ -512,17 +675,22 @@ const submitData = async () => {
   }
 }
 
+const closeShop = () => {
+  showShop.value = false
+  shopTab.value = 'store'
+}
+
 const logout = () => {
   localStorage.removeItem('user')
   window.location.href = '/'
 }
 
+// ====== 粒子背景 ======
 onMounted(() => {
   loadData()
 
   const canvas = canvasRef.value
   if (!canvas) return
-
   const ctx = canvas.getContext('2d')
   let width = window.innerWidth
   let height = window.innerHeight
@@ -544,22 +712,18 @@ onMounted(() => {
   function draw() {
     ctx.fillStyle = 'rgba(10, 10, 10, 0.08)'
     ctx.fillRect(0, 0, width, height)
-
     particles.forEach(p => {
       p.x += p.speedX
       p.y += p.speedY
       if (p.x < 0 || p.x > width) p.speedX *= -1
       if (p.y < 0 || p.y > height) p.speedY *= -1
-
       ctx.beginPath()
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
       ctx.fillStyle = `rgba(200, 200, 220, ${p.opacity})`
       ctx.fill()
     })
-
     requestAnimationFrame(draw)
   }
-
   draw()
 
   window.addEventListener('resize', () => {
