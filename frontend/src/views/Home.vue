@@ -264,6 +264,8 @@ const loadUserInfo = async () => {
     return
   }
   user.value = JSON.parse(userStr)
+  console.log('👤 用户信息:', user.value)
+  console.log('🆔 userId:', user.value?.userId)
 }
 
 const fetchUserInfo = async () => {
