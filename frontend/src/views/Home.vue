@@ -325,6 +325,12 @@
               >
                 卸下
               </button>
+              <button
+                  @click="deleteDecoration(item.userDecorationId)"
+                  class="mt-1 w-full bg-red-900/50 hover:bg-red-800 text-white text-xs font-medium py-1 rounded-lg transition"
+              >
+                🗑️ 删除
+              </button>
             </div>
           </div>
         </div>
@@ -634,6 +640,20 @@ const unequipDecoration = async (userDecorationId) => {
     }
   } catch (error) {
     alert('卸下失败，墓场暂时罢工 ☠️')
+  }
+}
+
+const deleteDecoration = async (userDecorationId) => {
+  if (!confirm('确定要删除这个装饰品吗？')) return
+  try {
+    await axios.delete(`${API_BASE}/api/v1/decorations/delete?userDecorationId=${userDecorationId}`)
+    alert('✅ 已删除')
+    await loadMyDecorations()
+    await loadDecorations()
+    await loadDecorationStates()
+  } catch (error) {
+    console.error('删除失败:', error)
+    alert('删除失败，墓场暂时罢工 ☠️')
   }
 }
 

@@ -79,11 +79,22 @@ public class DecorationController {
         user.setHellMoney(user.getHellMoney() - decoration.getPrice());
         userRepository.save(user);
 
-        // 给装饰品
+        // 检查是否已拥有
+        if (userDecorationRepository.existsByUserIdAndDecorationId(userId, decorationId)) {
+            UserDecoration existing = userDecorationRepository.findByUserIdAndDecorationId(userId, decorationId).get();
+            existing.setQuantity(existing.getQuantity() + 1);
+            userDecorationRepository.save(existing);
+            DecorationState state = new DecorationState(userId, existing.getId());
+            decorationStateRepository.save(state);
+            response.put("success", true);
+            response.put("message", "购买成功！你又拥有了一个 " + decoration.getName() + " ⚰️");
+            response.put("remainingMoney", user.getHellMoney());
+            return response;
+        }
+
+        // 首次购买
         UserDecoration userDeco = new UserDecoration(userId, decorationId);
         UserDecoration saved = userDecorationRepository.save(userDeco);
-
-        // 创建默认状态
         DecorationState state = new DecorationState(userId, saved.getId());
         decorationStateRepository.save(state);
 
@@ -148,7 +159,6 @@ public class DecorationController {
             return response;
         }
 
-        // 同分类卸下其他
         List<UserDecoration> equipped = userDecorationRepository.findByUserIdAndIsEquippedTrue(ud.getUserId());
         for (UserDecoration e : equipped) {
             Decoration ed = decorationRepository.findById(e.getDecorationId()).orElse(null);
@@ -211,7 +221,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 创建装饰位置状态（修复缺失状态） ======
+    // ====== 创建装饰位置状态 ======
     @PostMapping("/state/create")
     public Map<String, Object> createState(@RequestParam Long userId, @RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -228,6 +238,22 @@ public class DecorationController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "创建失败: " + e.getMessage());
+        }
+        return response;
+    }
+
+    // ====== 删除装饰品 ======
+    @DeleteMapping("/delete")
+    public Map<String, Object> delete(@RequestParam Long userDecorationId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            decorationStateRepository.deleteByUserDecorationId(userDecorationId);
+            userDecorationRepository.deleteById(userDecorationId);
+            response.put("success", true);
+            response.put("message", "已删除");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "删除失败: " + e.getMessage());
         }
         return response;
     }
