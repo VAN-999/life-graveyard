@@ -69,6 +69,15 @@ public class TaskController {
         return response;
     }
 
+    @PostMapping("/assign")
+    public Map<String, Object> assignTasks(@RequestParam Long userId) {
+        Map<String, Object> response = new HashMap<>();
+        reportService.assignDailyTasks(userId);
+        response.put("success", true);
+        response.put("message", "任务已分配 ☠️");
+        return response;
+    }
+
     @PostMapping("/claim")
     public Map<String, Object> claimReward(@RequestParam Long userTaskId) {
         Map<String, Object> response = new HashMap<>();

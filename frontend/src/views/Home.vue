@@ -282,7 +282,11 @@ const fetchUserInfo = async () => {
 const loadTasks = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.userId}`)
+    let res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.userId}`)
+    if (res.data.success && res.data.data.length === 0) {
+      await axios.post(`${API_BASE}/api/v1/tasks/assign?userId=${user.value.userId}`)
+      res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.userId}`)
+    }
     if (res.data.success) {
       taskList.value = res.data.data
       taskTotal.value = res.data.totalCount
