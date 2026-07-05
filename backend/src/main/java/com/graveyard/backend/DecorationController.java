@@ -19,15 +19,15 @@ public class DecorationController {
     @Autowired
     private UserRepository userRepository;
 
-    /**
-     * 获取所有装饰品（按分类）
-     */
+    @Autowired
+    private DecorationStateRepository decorationStateRepository;
+
+    // ====== 获取所有装饰品 ======
     @GetMapping("/list")
     public Map<String, Object> listAll() {
         Map<String, Object> response = new HashMap<>();
         List<Decoration> all = decorationRepository.findAll();
 
-        // 按分类分组
         Map<String, List<Decoration>> grouped = new HashMap<>();
         for (Decoration d : all) {
             grouped.computeIfAbsent(d.getCategory(), k -> new java.util.ArrayList<>()).add(d);
@@ -38,9 +38,7 @@ public class DecorationController {
         return response;
     }
 
-    /**
-     * 获取某个分类的装饰品
-     */
+    // ====== 获取分类装饰品 ======
     @GetMapping("/category/{category}")
     public Map<String, Object> listByCategory(@PathVariable String category) {
         Map<String, Object> response = new HashMap<>();
@@ -50,14 +48,11 @@ public class DecorationController {
         return response;
     }
 
-    /**
-     * 购买装饰品
-     */
+    // ====== 购买装饰品 ======
     @PostMapping("/buy")
     public Map<String, Object> buy(@RequestParam Long userId, @RequestParam Long decorationId) {
         Map<String, Object> response = new HashMap<>();
 
-        // 1. 查用户
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             response.put("success", false);
@@ -65,7 +60,6 @@ public class DecorationController {
             return response;
         }
 
-        // 2. 查装饰品
         Decoration decoration = decorationRepository.findById(decorationId).orElse(null);
         if (decoration == null) {
             response.put("success", false);
@@ -73,7 +67,6 @@ public class DecorationController {
             return response;
         }
 
-        // 3. 检查冥币够不够
         if (user.getHellMoney() < decoration.getPrice()) {
             response.put("success", false);
             response.put("message", "冥币不够，先去赚点再回来买。");
@@ -82,19 +75,23 @@ public class DecorationController {
             return response;
         }
 
-        // 4. 检查是否已经拥有
         if (userDecorationRepository.existsByUserIdAndDecorationId(userId, decorationId)) {
             response.put("success", false);
             response.put("message", "你已经拥有这个装饰品了，别买重复的。");
             return response;
         }
 
-        // 5. 扣钱，给装饰品
+        // 扣钱
         user.setHellMoney(user.getHellMoney() - decoration.getPrice());
         userRepository.save(user);
 
+        // 给装饰品
         UserDecoration userDeco = new UserDecoration(userId, decorationId);
-        userDecorationRepository.save(userDeco);
+        UserDecoration saved = userDecorationRepository.save(userDeco);
+
+        // 创建默认状态
+        DecorationState state = new DecorationState(userId, saved.getId());
+        decorationStateRepository.save(state);
 
         response.put("success", true);
         response.put("message", "购买成功！你拥有了 " + decoration.getName() + " ⚰️");
@@ -102,9 +99,7 @@ public class DecorationController {
         return response;
     }
 
-    /**
-     * 查看用户拥有的装饰品
-     */
+    // ====== 查看用户拥有的装饰品 ======
     @GetMapping("/my")
     public Map<String, Object> myDecorations(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
@@ -118,7 +113,6 @@ public class DecorationController {
 
         List<UserDecoration> myList = userDecorationRepository.findByUserId(userId);
 
-        // 把装饰品详情拼进去
         List<Map<String, Object>> result = new java.util.ArrayList<>();
         for (UserDecoration ud : myList) {
             Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);
@@ -130,6 +124,7 @@ public class DecorationController {
                 item.put("category", d.getCategory());
                 item.put("isEquipped", ud.getIsEquipped());
                 item.put("quantity", ud.getQuantity());
+                item.put("userDecorationId", ud.getId());
                 result.add(item);
             }
         }
@@ -140,9 +135,7 @@ public class DecorationController {
         return response;
     }
 
-    /**
-     * 装备装饰品
-     */
+    // ====== 装备装饰品 ======
     @PostMapping("/equip")
     public Map<String, Object> equip(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -154,7 +147,6 @@ public class DecorationController {
             return response;
         }
 
-        // 同一分类只能装备一个，先把同分类的卸下来
         Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);
         if (d == null) {
             response.put("success", false);
@@ -162,7 +154,7 @@ public class DecorationController {
             return response;
         }
 
-        // 查找该用户同分类所有装备的，全部卸下
+        // 同分类卸下其他
         List<UserDecoration> equipped = userDecorationRepository.findByUserIdAndIsEquippedTrue(ud.getUserId());
         for (UserDecoration e : equipped) {
             Decoration ed = decorationRepository.findById(e.getDecorationId()).orElse(null);
@@ -172,7 +164,6 @@ public class DecorationController {
             }
         }
 
-        // 装备当前这个
         ud.setIsEquipped(true);
         userDecorationRepository.save(ud);
 
@@ -181,9 +172,7 @@ public class DecorationController {
         return response;
     }
 
-    /**
-     * 卸下装饰品
-     */
+    // ====== 卸下装饰品 ======
     @PostMapping("/unequip")
     public Map<String, Object> unequip(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -200,6 +189,46 @@ public class DecorationController {
 
         response.put("success", true);
         response.put("message", "已卸下");
+        return response;
+    }
+
+    // ====== 获取所有装饰位置 ======
+    @GetMapping("/states")
+    public Map<String, Object> getStates(@RequestParam Long userId) {
+        Map<String, Object> response = new HashMap<>();
+        List<DecorationState> states = decorationStateRepository.findByUserId(userId);
+        response.put("success", true);
+        response.put("data", states);
+        return response;
+    }
+
+    // ====== 保存单个装饰位置 ======
+    @PostMapping("/state/save")
+    public Map<String, Object> saveState(@RequestBody DecorationState state) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            DecorationState saved = decorationStateRepository.save(state);
+            response.put("success", true);
+            response.put("data", saved);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "保存失败: " + e.getMessage());
+        }
+        return response;
+    }
+
+    // ====== 从墓场移除装饰 ======
+    @PostMapping("/state/delete")
+    public Map<String, Object> deleteState(@RequestParam Long userDecorationId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            decorationStateRepository.deleteByUserDecorationId(userDecorationId);
+            response.put("success", true);
+            response.put("message", "已从墓场移除");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "移除失败");
+        }
         return response;
     }
 }
