@@ -17,7 +17,6 @@
 
     <main class="relative z-10 flex flex-1 h-[calc(100vh-80px)] gap-4 p-4 overflow-hidden">
 
-      <!-- ====== 左侧数据卡片 ====== -->
       <aside class="w-56 flex flex-col gap-3 overflow-y-auto">
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">🏃 今日步数</div>
@@ -37,7 +36,6 @@
         </div>
       </aside>
 
-      <!-- ====== 中间墓场 ====== -->
       <section class="flex-1 flex flex-col items-center justify-center bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden">
         <Graveyard
             :username="user?.username || '墓场主'"
@@ -47,7 +45,6 @@
         />
       </section>
 
-      <!-- ====== 右侧：报告 + 任务 ====== -->
       <aside class="w-64 flex flex-col gap-3 overflow-y-auto">
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm flex-1">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">💀 今日死亡报告</div>
@@ -60,7 +57,6 @@
           <p class="text-sm text-gray-300 line-clamp-3">{{ deathReason || '今天还没死，等晚上吧' }}</p>
         </div>
 
-        <!-- ====== 任务卡片 ====== -->
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm">
           <div class="flex items-center justify-between">
             <span class="text-gray-400 text-xs uppercase tracking-widest">📋 今日任务</span>
@@ -71,7 +67,6 @@
           </div>
 
           <div class="mt-3 space-y-3 max-h-60 overflow-y-auto">
-            <!-- 未完成 -->
             <div v-if="incompleteTasks.length">
               <div class="text-xs text-gray-500 mb-1">⏳ 未完成</div>
               <div
@@ -85,7 +80,6 @@
               </div>
             </div>
 
-            <!-- 可领取 -->
             <div v-if="claimableTasks.length">
               <div class="text-xs text-green-400 mb-1">✅ 可领取</div>
               <div
@@ -99,7 +93,6 @@
               </div>
             </div>
 
-            <!-- 已领取 -->
             <div v-if="claimedTasks.length">
               <div class="text-xs text-gray-600 mb-1">💰 已领取</div>
               <div
@@ -127,7 +120,7 @@
       </aside>
     </main>
 
-    <!-- ====== 任务详情弹窗 ====== -->
+    <!-- 任务详情弹窗 -->
     <div v-if="showTaskDetail && selectedTask" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
       <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full mx-4">
         <h3 class="text-xl font-bold text-white mb-2">{{ selectedTask.name }}</h3>
@@ -160,7 +153,7 @@
       </div>
     </div>
 
-    <!-- ====== 数据提交弹窗 ====== -->
+    <!-- 数据提交弹窗 -->
     <div v-if="showDataModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
       <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-xl font-bold text-white mb-4">📊 提交今日数据</h3>
@@ -221,6 +214,8 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import Graveyard from '../components/Graveyard.vue'
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 const user = ref(null)
 const todayData = ref(null)
 const reportData = ref(null)
@@ -262,7 +257,6 @@ const dataForm = ref({
 
 const canvasRef = ref(null)
 
-// ====== 加载用户信息 ======
 const loadUserInfo = async () => {
   const userStr = localStorage.getItem('user')
   if (!userStr) {
@@ -272,11 +266,10 @@ const loadUserInfo = async () => {
   user.value = JSON.parse(userStr)
 }
 
-// ====== 从后端拉取最新用户信息 ======
 const fetchUserInfo = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`/api/v1/user/info?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/user/info?userId=${user.value.userId}`)
     if (res.data.success) {
       user.value = res.data.data
       localStorage.setItem('user', JSON.stringify(res.data.data))
@@ -286,11 +279,10 @@ const fetchUserInfo = async () => {
   }
 }
 
-// ====== 加载任务 ======
 const loadTasks = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`/api/v1/tasks/today?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.userId}`)
     if (res.data.success) {
       taskList.value = res.data.data
       taskTotal.value = res.data.totalCount
@@ -301,33 +293,30 @@ const loadTasks = async () => {
   }
 }
 
-// ====== 加载今日数据 ======
 const loadTodayData = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`/api/v1/daily-data/today?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/daily-data/today?userId=${user.value.userId}`)
     if (res.data.success) todayData.value = res.data.data
   } catch (error) {
     console.error('加载数据失败:', error)
   }
 }
 
-// ====== 加载报告 ======
 const loadReport = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`/api/v1/report/today?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/report/today?userId=${user.value.userId}`)
     if (res.data.success) reportData.value = res.data.report
   } catch (error) {
     console.error('加载报告失败:', error)
   }
 }
 
-// ====== 加载装饰品 ======
 const loadDecorations = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`/api/v1/decorations/my?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/my?userId=${user.value.userId}`)
     if (res.data.success) {
       equippedDecorations.value = res.data.data.filter(d => d.isEquipped)
     }
@@ -336,7 +325,6 @@ const loadDecorations = async () => {
   }
 }
 
-// ====== 加载所有数据 ======
 const loadData = async () => {
   await loadUserInfo()
   await loadTasks()
@@ -345,7 +333,6 @@ const loadData = async () => {
   await loadDecorations()
 }
 
-// ====== 任务操作 ======
 const openTaskDetail = (task) => {
   selectedTask.value = task
   showTaskDetail.value = true
@@ -356,10 +343,9 @@ const closeTaskDetail = () => {
   selectedTask.value = null
 }
 
-// ====== 领取奖励 ======
 const claimReward = async (userTaskId) => {
   try {
-    const res = await axios.post(`/api/v1/tasks/claim?userTaskId=${userTaskId}`)
+    const res = await axios.post(`${API_BASE}/api/v1/tasks/claim?userTaskId=${userTaskId}`)
     if (res.data.success) {
       alert(`✅ ${res.data.message}`)
       await loadTasks()
@@ -373,7 +359,6 @@ const claimReward = async (userTaskId) => {
   }
 }
 
-// ====== 提交数据 ======
 const submitData = async () => {
   if (!user.value) return
   submitting.value = true
@@ -390,7 +375,7 @@ const submitData = async () => {
       momentsViewed: dataForm.value.momentsViewed
     }
 
-    const res = await axios.post('/api/v1/daily-data/submit', payload)
+    const res = await axios.post(`${API_BASE}/api/v1/daily-data/submit`, payload)
     if (res.data.success) {
       alert('✅ 数据提交成功！')
       showDataModal.value = false
@@ -398,7 +383,7 @@ const submitData = async () => {
       await loadTodayData()
       await loadReport()
       try {
-        await axios.post(`/api/v1/tasks/check?userId=${user.value.userId}`)
+        await axios.post(`${API_BASE}/api/v1/tasks/check?userId=${user.value.userId}`)
       } catch (e) {}
       await loadTasks()
       await fetchUserInfo()
@@ -412,13 +397,11 @@ const submitData = async () => {
   }
 }
 
-// ====== 退出 ======
 const logout = () => {
   localStorage.removeItem('user')
   window.location.href = '/'
 }
 
-// ====== 粒子背景 ======
 onMounted(() => {
   loadData()
 

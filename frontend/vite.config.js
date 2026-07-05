@@ -6,9 +6,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://life-graveyard-production.up.railway.app',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api')
+        target: 'http://life-graveyard:8080',
+        changeOrigin: true
       }
     }
   }

@@ -62,6 +62,8 @@ const canvasRef = ref(null)
 const loading = ref(false)
 const errorMsg = ref('')
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 const handleLogin = async () => {
   if (!username.value || !password.value) {
     errorMsg.value = '用户名和密码不能为空 ⚰️'
@@ -72,7 +74,7 @@ const handleLogin = async () => {
   errorMsg.value = ''
 
   try {
-    const response = await axios.post('/api/v1/user/login', {
+    const response = await axios.post(`${API_BASE}/api/v1/user/login`, {
       username: username.value,
       password: password.value
     })
