@@ -129,6 +129,16 @@ public class TaskController {
         return response;
     }
 
+    @GetMapping("/test-assign")
+    public String testAssign(@RequestParam Long userId) {
+        try {
+            reportService.assignDailyTasks(userId);
+            return "分配完成，请去数据库查看 user_tasks 表";
+        } catch (Exception e) {
+            return "报错：" + e.getMessage();
+        }
+    }
+
     @PostMapping("/check")
     public Map<String, Object> checkTasks(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
