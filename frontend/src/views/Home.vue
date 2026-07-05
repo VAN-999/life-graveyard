@@ -263,9 +263,14 @@ const loadUserInfo = async () => {
     window.location.href = '/'
     return
   }
-  user.value = JSON.parse(userStr)
-  console.log('👤 用户信息:', user.value)
-  console.log('🆔 userId:', user.value?.userId)
+  const data = JSON.parse(userStr)
+  // 兼容处理：如果存的是 id 而不是 userId
+  if (data.userId === undefined && data.id !== undefined) {
+    data.userId = data.id
+  }
+  user.value = data
+  console.log('用户信息:', user.value)
+  console.log('userId:', user.value?.userId)
 }
 
 const fetchUserInfo = async () => {
