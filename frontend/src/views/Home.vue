@@ -214,7 +214,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import Graveyard from '../components/Graveyard.vue'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+const API_BASE = import.meta.env.VITE_API_URL || 'https://life-graveyard-production.up.railway.app'
 
 const user = ref(null)
 const todayData = ref(null)
@@ -264,19 +264,16 @@ const loadUserInfo = async () => {
     return
   }
   const data = JSON.parse(userStr)
-  // 兼容处理：如果存的是 id 而不是 userId
   if (data.userId === undefined && data.id !== undefined) {
     data.userId = data.id
   }
   user.value = data
-  console.log('用户信息:', user.value)
-  console.log('userId:', user.value?.userId)
 }
 
 const fetchUserInfo = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`${API_BASE}/api/v1/user/info?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/user/info?userId=${user.value.id}`)
     if (res.data.success) {
       user.value = res.data.data
       localStorage.setItem('user', JSON.stringify(res.data.data))
@@ -289,10 +286,10 @@ const fetchUserInfo = async () => {
 const loadTasks = async () => {
   if (!user.value) return
   try {
-    let res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.userId}`)
+    let res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.id}`)
     if (res.data.success && res.data.data.length === 0) {
-      await axios.post(`${API_BASE}/api/v1/tasks/assign?userId=${user.value.userId}`)
-      res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.userId}`)
+      await axios.post(`${API_BASE}/api/v1/tasks/assign?userId=${user.value.id}`)
+      res = await axios.get(`${API_BASE}/api/v1/tasks/today?userId=${user.value.id}`)
     }
     if (res.data.success) {
       taskList.value = res.data.data
@@ -307,7 +304,7 @@ const loadTasks = async () => {
 const loadTodayData = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`${API_BASE}/api/v1/daily-data/today?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/daily-data/today?userId=${user.value.id}`)
     if (res.data.success) todayData.value = res.data.data
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -317,7 +314,7 @@ const loadTodayData = async () => {
 const loadReport = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`${API_BASE}/api/v1/report/today?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/report/today?userId=${user.value.id}`)
     if (res.data.success) reportData.value = res.data.report
   } catch (error) {
     console.error('加载报告失败:', error)
@@ -327,7 +324,7 @@ const loadReport = async () => {
 const loadDecorations = async () => {
   if (!user.value) return
   try {
-    const res = await axios.get(`${API_BASE}/api/v1/decorations/my?userId=${user.value.userId}`)
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/my?userId=${user.value.id}`)
     if (res.data.success) {
       equippedDecorations.value = res.data.data.filter(d => d.isEquipped)
     }
@@ -376,7 +373,7 @@ const submitData = async () => {
 
   try {
     const payload = {
-      userId: user.value.userId,
+      userId: user.value.id,
       steps: dataForm.value.steps,
       screenTimeMinutes: dataForm.value.screenTimeMinutes,
       keyPresses: dataForm.value.keyPresses,
@@ -394,7 +391,7 @@ const submitData = async () => {
       await loadTodayData()
       await loadReport()
       try {
-        await axios.post(`${API_BASE}/api/v1/tasks/check?userId=${user.value.userId}`)
+        await axios.post(`${API_BASE}/api/v1/tasks/check?userId=${user.value.id}`)
       } catch (e) {}
       await loadTasks()
       await fetchUserInfo()
