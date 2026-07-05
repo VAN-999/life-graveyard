@@ -11,12 +11,16 @@
         <span class="text-gray-400">🪙 冥币: <span class="text-yellow-400 font-bold">{{ user?.hellMoney || 0 }}</span></span>
         <span class="text-gray-400">📈 Lv.{{ user?.level || 1 }}</span>
         <span class="text-gray-300">{{ user?.username || '未知' }}</span>
+        <button @click="showShop = true" class="text-gray-300 hover:text-white transition text-sm">
+          🛒 商店
+        </button>
         <button @click="logout" class="text-gray-500 hover:text-red-400 transition text-sm">退出</button>
       </div>
     </header>
 
     <main class="relative z-10 flex flex-1 h-[calc(100vh-80px)] gap-4 p-4 overflow-hidden">
 
+      <!-- 左侧数据卡片 -->
       <aside class="w-56 flex flex-col gap-3 overflow-y-auto">
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">🏃 今日步数</div>
@@ -36,6 +40,7 @@
         </div>
       </aside>
 
+      <!-- 中间墓场 -->
       <section class="flex-1 flex flex-col items-center justify-center bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden">
         <Graveyard
             :username="user?.username || '墓场主'"
@@ -45,6 +50,7 @@
         />
       </section>
 
+      <!-- 右侧面板 -->
       <aside class="w-64 flex flex-col gap-3 overflow-y-auto">
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm flex-1">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">💀 今日死亡报告</div>
@@ -206,6 +212,55 @@
         </div>
       </div>
     </div>
+
+    <!-- ====== 商店弹窗 ====== -->
+    <div v-if="showShop" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-white">🛒 冥币商店</h3>
+          <span class="text-yellow-400 text-sm">💰 {{ user?.hellMoney || 0 }} 冥币</span>
+        </div>
+
+        <!-- 分类标签 -->
+        <div class="flex gap-2 mb-4 overflow-x-auto">
+          <button
+              v-for="cat in categories"
+              :key="cat"
+              @click="selectedCategory = cat"
+              class="px-3 py-1 rounded-lg text-sm transition whitespace-nowrap"
+              :class="selectedCategory === cat ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+          >
+            {{ cat }}
+          </button>
+        </div>
+
+        <!-- 商品列表 -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div
+              v-for="item in filteredDecorations"
+              :key="item.id"
+              class="bg-black/40 border border-gray-700 rounded-xl p-3 text-center hover:border-gray-500 transition"
+          >
+            <div class="mb-1">
+              <img :src="item.icon" class="w-16 h-16 object-contain mx-auto" />
+            </div>
+            <div class="text-white font-medium text-sm">{{ item.name }}</div>
+            <div class="text-yellow-400 text-sm">💰 {{ item.price }} 冥币</div>
+            <button
+                @click="buyDecoration(item.id)"
+                :disabled="(user?.hellMoney || 0) < item.price || buying"
+                class="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-1.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ (user?.hellMoney || 0) >= item.price ? '购买 💀' : '冥币不足' }}
+            </button>
+          </div>
+        </div>
+
+        <button @click="showShop = false" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition">
+          关闭商店
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -253,6 +308,22 @@ const dataForm = ref({
   appOpens: 0,
   lastActiveAt: '',
   momentsViewed: false
+})
+
+// ====== 商店 ======
+const showShop = ref(false)
+const decorations = ref([])
+const selectedCategory = ref('全部')
+const buying = ref(false)
+
+const categories = computed(() => {
+  const cats = decorations.value.map(d => d.category)
+  return ['全部', ...new Set(cats)]
+})
+
+const filteredDecorations = computed(() => {
+  if (selectedCategory.value === '全部') return decorations.value
+  return decorations.value.filter(d => d.category === selectedCategory.value)
 })
 
 const canvasRef = ref(null)
@@ -333,12 +404,28 @@ const loadDecorations = async () => {
   }
 }
 
+const loadDecorationsList = async () => {
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/list`)
+    if (res.data.success) {
+      const flat = []
+      for (const category in res.data.data) {
+        flat.push(...res.data.data[category])
+      }
+      decorations.value = flat
+    }
+  } catch (error) {
+    console.error('加载装饰品列表失败:', error)
+  }
+}
+
 const loadData = async () => {
   await loadUserInfo()
   await loadTasks()
   await loadTodayData()
   await loadReport()
   await loadDecorations()
+  await loadDecorationsList()
 }
 
 const openTaskDetail = (task) => {
@@ -364,6 +451,26 @@ const claimReward = async (userTaskId) => {
     }
   } catch (error) {
     alert('领取失败，墓场暂时罢工 ☠️')
+  }
+}
+
+const buyDecoration = async (decorationId) => {
+  if (!user.value) return
+  buying.value = true
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/buy?userId=${user.value.id}&decorationId=${decorationId}`)
+    if (res.data.success) {
+      alert(`✅ ${res.data.message}`)
+      await fetchUserInfo()
+      await loadDecorationsList()
+      await loadDecorations()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('购买失败，墓场暂时罢工 ☠️')
+  } finally {
+    buying.value = false
   }
 }
 
