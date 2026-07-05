@@ -1,5 +1,6 @@
 package com.graveyard.backend;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 @Entity
@@ -17,7 +18,7 @@ public class DecorationState {
     private Long userDecorationId;
 
     @Column(name = "x")
-    private Double x = 50.0;  // 百分比位置
+    private Double x = 50.0;
 
     @Column(name = "y")
     private Double y = 50.0;
@@ -29,18 +30,18 @@ public class DecorationState {
     private Double scale = 1.0;
 
     @Column(name = "z_index")
+    @JsonProperty("zIndex")
     private Integer zIndex = 0;
 
     @Column(name = "is_visible")
     private Boolean isVisible = true;
 
-    // 构造方法
     public DecorationState() {}
 
     public DecorationState(Long userId, Long userDecorationId) {
         this.userId = userId;
         this.userDecorationId = userDecorationId;
-        this.x = 50.0 + (Math.random() - 0.5) * 30;  // 随机初始位置
+        this.x = 50.0 + (Math.random() - 0.5) * 30;
         this.y = 50.0 + (Math.random() - 0.5) * 30;
         this.rotation = 0.0;
         this.scale = 1.0;
@@ -48,7 +49,6 @@ public class DecorationState {
         this.isVisible = true;
     }
 
-    // Getter & Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

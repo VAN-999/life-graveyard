@@ -12,7 +12,7 @@
       </div>
     </div>
 
-    <!-- ====== 可拖拽装饰品 ====== -->
+    <!-- ====== 可拖拽装饰品（key 用 userDecorationId） ====== -->
     <div
         v-for="deco in editableDecorations"
         :key="deco.userDecorationId"
@@ -55,9 +55,13 @@ const selectedDecorationId = ref(null)
 
 const editableDecorations = ref([])
 
-watch(() => [props.equippedDecorations, props.decorationStates], () => {
-  mergeDecorations()
-}, { deep: true })
+watch(
+    () => [props.equippedDecorations, props.decorationStates],
+    () => {
+      mergeDecorations()
+    },
+    { deep: true }
+)
 
 const mergeDecorations = () => {
   const statesMap = {}
@@ -65,8 +69,21 @@ const mergeDecorations = () => {
     statesMap[s.userDecorationId] = s
   })
 
-  editableDecorations.value = props.equippedDecorations.map(deco => {
+  // 直接替换整个数组，但每个对象保持引用稳定
+  const newList = props.equippedDecorations.map(deco => {
     const state = statesMap[deco.userDecorationId]
+    // 如果已经存在，复用对象引用，只更新属性
+    const existing = editableDecorations.value.find(d => d.userDecorationId === deco.userDecorationId)
+    if (existing) {
+      existing.x = state?.x ?? existing.x
+      existing.y = state?.y ?? existing.y
+      existing.rotation = state?.rotation ?? existing.rotation
+      existing.scale = state?.scale ?? existing.scale
+      existing.zIndex = state?.zIndex ?? existing.zIndex
+      existing.isVisible = state?.isVisible !== false
+      return existing
+    }
+    // 新装饰品
     return {
       ...deco,
       x: state?.x ?? (50 + (Math.random() - 0.5) * 30),
@@ -77,6 +94,8 @@ const mergeDecorations = () => {
       isVisible: state?.isVisible !== false
     }
   })
+
+  editableDecorations.value = newList
 }
 
 let dragData = null
