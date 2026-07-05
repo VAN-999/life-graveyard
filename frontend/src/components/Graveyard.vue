@@ -12,7 +12,6 @@
       </div>
     </div>
 
-    <!-- ====== 可拖拽装饰品（key 用 userDecorationId） ====== -->
     <div
         v-for="deco in editableDecorations"
         :key="deco.userDecorationId"
@@ -52,7 +51,6 @@ const emit = defineEmits(['update-state', 'select-decoration'])
 const canvasRef = ref(null)
 const starContainer = ref(null)
 const selectedDecorationId = ref(null)
-
 const editableDecorations = ref([])
 
 watch(
@@ -69,10 +67,8 @@ const mergeDecorations = () => {
     statesMap[s.userDecorationId] = s
   })
 
-  // 直接替换整个数组，但每个对象保持引用稳定
   const newList = props.equippedDecorations.map(deco => {
     const state = statesMap[deco.userDecorationId]
-    // 如果已经存在，复用对象引用，只更新属性
     const existing = editableDecorations.value.find(d => d.userDecorationId === deco.userDecorationId)
     if (existing) {
       existing.x = state?.x ?? existing.x
@@ -83,7 +79,6 @@ const mergeDecorations = () => {
       existing.isVisible = state?.isVisible !== false
       return existing
     }
-    // 新装饰品
     return {
       ...deco,
       x: state?.x ?? (50 + (Math.random() - 0.5) * 30),
@@ -176,7 +171,6 @@ defineExpose({
   border-radius: 16px;
   background: #0a0c18;
 }
-
 .bg-image {
   position: absolute;
   inset: 0;
@@ -186,7 +180,6 @@ defineExpose({
   object-position: center 30%;
   z-index: 0;
 }
-
 .star-container {
   position: absolute;
   inset: 0;
@@ -203,7 +196,6 @@ defineExpose({
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
 }
-
 .tomb-wrap {
   position: absolute;
   right: 18%;
@@ -213,12 +205,10 @@ defineExpose({
   flex-direction: column;
   align-items: center;
 }
-
 .tomb-group {
   position: relative;
   display: inline-block;
 }
-
 .shadow-wrapper {
   position: absolute;
   bottom: -28px;
@@ -228,14 +218,12 @@ defineExpose({
   width: 280px;
   pointer-events: none;
 }
-
 .tomb-shadow-img {
   width: 100%;
   height: auto;
   display: block;
   opacity: 0.35;
 }
-
 .tomb-png {
   position: relative;
   z-index: 2;
@@ -243,7 +231,6 @@ defineExpose({
   height: auto;
   display: block;
 }
-
 .decor-item {
   position: absolute;
   z-index: 4;

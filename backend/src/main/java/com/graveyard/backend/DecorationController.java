@@ -75,12 +75,6 @@ public class DecorationController {
             return response;
         }
 
-        if (userDecorationRepository.existsByUserIdAndDecorationId(userId, decorationId)) {
-            response.put("success", false);
-            response.put("message", "你已经拥有这个装饰品了，别买重复的。");
-            return response;
-        }
-
         // 扣钱
         user.setHellMoney(user.getHellMoney() - decoration.getPrice());
         userRepository.save(user);
@@ -213,6 +207,27 @@ public class DecorationController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "保存失败: " + e.getMessage());
+        }
+        return response;
+    }
+
+    // ====== 创建装饰位置状态（修复缺失状态） ======
+    @PostMapping("/state/create")
+    public Map<String, Object> createState(@RequestParam Long userId, @RequestParam Long userDecorationId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (decorationStateRepository.findByUserDecorationId(userDecorationId).isPresent()) {
+                response.put("success", true);
+                response.put("message", "状态已存在");
+                return response;
+            }
+            DecorationState state = new DecorationState(userId, userDecorationId);
+            decorationStateRepository.save(state);
+            response.put("success", true);
+            response.put("message", "状态创建成功");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "创建失败: " + e.getMessage());
         }
         return response;
     }
