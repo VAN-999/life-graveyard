@@ -20,7 +20,6 @@
 
     <main class="relative z-10 flex flex-1 h-[calc(100vh-80px)] gap-4 p-4 overflow-hidden">
 
-      <!-- 左侧数据卡片 -->
       <aside class="w-56 flex flex-col gap-3 overflow-y-auto">
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">🏃 今日步数</div>
@@ -40,7 +39,6 @@
         </div>
       </aside>
 
-      <!-- 中间墓场 -->
       <section
           class="flex-1 flex flex-col bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden"
           @click="deselectDecoration"
@@ -55,7 +53,6 @@
             @select-decoration="onSelectDecoration"
         />
 
-        <!-- 编辑器工具栏 -->
         <div v-if="selectedDecorationId" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-2 bg-black/70 border border-gray-700 rounded-xl p-2 backdrop-blur-sm">
           <button @click.stop="rotateDecoration(-15)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">↺ -15°</button>
           <button @click.stop="rotateDecoration(15)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">↻ +15°</button>
@@ -68,7 +65,6 @@
         </div>
       </section>
 
-      <!-- 右侧面板 -->
       <aside class="w-64 flex flex-col gap-3 overflow-y-auto">
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm flex-1">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">💀 今日死亡报告</div>
@@ -307,7 +303,6 @@
                 <img :src="item.icon" class="w-16 h-16 object-contain mx-auto" />
               </div>
               <div class="text-white font-medium text-sm">{{ item.name }}</div>
-              <div v-if="item.quantity > 1" class="text-xs text-gray-400">×{{ item.quantity }}</div>
               <div class="text-xs mt-1" :class="item.isEquipped ? 'text-green-400' : 'text-gray-500'">
                 {{ item.isEquipped ? '✅ 已装备' : '未装备' }}
               </div>
@@ -411,7 +406,7 @@ const filteredDecorations = computed(() => {
   return decorations.value.filter(d => d.category === selectedCategory.value)
 })
 
-// ====== loadUserInfo（已修复，兼容 userId 和 id） ======
+// ====== loadUserInfo ======
 const loadUserInfo = async () => {
   const userStr = localStorage.getItem('user')
   if (!userStr) {
@@ -419,7 +414,6 @@ const loadUserInfo = async () => {
     return
   }
   const data = JSON.parse(userStr)
-  // 兼容 userId 和 id 两种字段名
   if (data.userId === undefined && data.id !== undefined) {
     data.userId = data.id
   }
@@ -774,7 +768,6 @@ const logout = () => {
   window.location.href = '/'
 }
 
-// ====== 粒子背景 ======
 onMounted(() => {
   loadData()
 

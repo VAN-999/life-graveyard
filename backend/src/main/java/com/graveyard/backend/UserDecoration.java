@@ -17,9 +17,6 @@ public class UserDecoration {
     @Column(name = "decoration_id", nullable = false)
     private Long decorationId;
 
-    @Column(name = "quantity")
-    private Integer quantity = 1;
-
     @Column(name = "is_equipped")
     private Boolean isEquipped = false;
 
@@ -31,12 +28,10 @@ public class UserDecoration {
     public UserDecoration(Long userId, Long decorationId) {
         this.userId = userId;
         this.decorationId = decorationId;
-        this.quantity = 1;
         this.isEquipped = false;
         this.obtainedAt = LocalDateTime.now();
     }
 
-    // Getter & Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -45,9 +40,6 @@ public class UserDecoration {
 
     public Long getDecorationId() { return decorationId; }
     public void setDecorationId(Long decorationId) { this.decorationId = decorationId; }
-
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
 
     public Boolean getIsEquipped() { return isEquipped; }
     public void setIsEquipped(Boolean isEquipped) { this.isEquipped = isEquipped; }
