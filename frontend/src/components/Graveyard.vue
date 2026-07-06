@@ -3,6 +3,15 @@
     <img :src="bgImage" class="bg-image" alt="墓园背景" />
     <div class="star-container" ref="starContainer"></div>
 
+    <!-- ====== 雾气层 ====== -->
+    <div class="fog-layer">
+      <div class="fog-container">
+        <div class="fog fog-1"></div>
+        <div class="fog fog-2"></div>
+        <div class="fog fog-3"></div>
+      </div>
+    </div>
+
     <div class="tomb-wrap">
       <div class="tomb-group">
         <div class="shadow-wrapper">
@@ -188,6 +197,7 @@ defineExpose({
   border-radius: 16px;
   background: #0a0c18;
 }
+
 .bg-image {
   position: absolute;
   inset: 0;
@@ -197,22 +207,26 @@ defineExpose({
   object-position: center 30%;
   z-index: 0;
 }
+
 .star-container {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
 }
+
 .star-item {
   position: absolute;
   background: #ffffff;
   border-radius: 50%;
   animation: starTwinkle 3s infinite ease-in-out;
 }
+
 @keyframes starTwinkle {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
 }
+
 .tomb-wrap {
   position: absolute;
   right: 18%;
@@ -222,10 +236,12 @@ defineExpose({
   flex-direction: column;
   align-items: center;
 }
+
 .tomb-group {
   position: relative;
   display: inline-block;
 }
+
 .shadow-wrapper {
   position: absolute;
   bottom: -28px;
@@ -235,12 +251,14 @@ defineExpose({
   width: 280px;
   pointer-events: none;
 }
+
 .tomb-shadow-img {
   width: 100%;
   height: auto;
   display: block;
   opacity: 0.35;
 }
+
 .tomb-png {
   position: relative;
   z-index: 2;
@@ -248,6 +266,7 @@ defineExpose({
   height: auto;
   display: block;
 }
+
 .decor-item {
   position: absolute;
   z-index: 4;
@@ -255,7 +274,68 @@ defineExpose({
   user-select: none;
   transition: border 0.1s ease;
 }
+
 .decor-item:active {
   cursor: grabbing;
+}
+
+/* ====== 雾气特效 ====== */
+.fog-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.fog-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.fog {
+  position: absolute;
+  bottom: 0;
+  left: -10%;
+  width: 120%;
+  height: 100%;
+  border-radius: 50%;
+  opacity: 0.3;
+  filter: blur(40px);
+}
+
+.fog-1 {
+  background: radial-gradient(ellipse at 20% 100%, rgba(150, 170, 180, 0.15) 0%, transparent 70%);
+  animation: fogMove 12s ease-in-out infinite alternate;
+}
+
+.fog-2 {
+  background: radial-gradient(ellipse at 60% 100%, rgba(120, 150, 170, 0.12) 0%, transparent 70%);
+  animation: fogMove 16s ease-in-out infinite alternate-reverse;
+  animation-delay: 2s;
+}
+
+.fog-3 {
+  background: radial-gradient(ellipse at 90% 100%, rgba(130, 160, 180, 0.10) 0%, transparent 70%);
+  animation: fogMove 14s ease-in-out infinite alternate;
+  animation-delay: 4s;
+}
+
+@keyframes fogMove {
+  0% {
+    transform: translateX(-5%) translateY(0) scale(1);
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateX(5%) translateY(-8%) scale(1.05);
+    opacity: 0.2;
+  }
 }
 </style>
