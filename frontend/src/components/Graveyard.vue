@@ -38,6 +38,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import bgImage from '../assets/cemetery-bg.jpg'
 import shadowImage from '../assets/tombstone-shadow.png'
+import tombstoneDefault from '../assets/tombstone.png'
 import tombstoneClassic from '../assets/tombstone-classic.png'
 import tombstoneBlack from '../assets/tombstone-black.png'
 import tombstoneNeon from '../assets/tombstone-neon.png'
@@ -49,7 +50,7 @@ const props = defineProps({
   equippedDecorations: { type: Array, default: () => [] },
   decorationStates: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
-  tombstoneStyle: { type: String, default: 'classic' }
+  tombstoneStyle: { type: String, default: 'default' }
 })
 
 const emit = defineEmits(['update-state', 'select-decoration'])
@@ -58,6 +59,7 @@ const canvasRef = ref(null)
 const starContainer = ref(null)
 
 const tombstoneMap = {
+  default: tombstoneDefault,
   classic: tombstoneClassic,
   black: tombstoneBlack,
   neon: tombstoneNeon,
@@ -66,7 +68,7 @@ const tombstoneMap = {
 }
 
 const currentTombstoneUrl = computed(() => {
-  return tombstoneMap[props.tombstoneStyle] || tombstoneClassic
+  return tombstoneMap[props.tombstoneStyle] || tombstoneDefault
 })
 
 const editableDecorations = ref([])

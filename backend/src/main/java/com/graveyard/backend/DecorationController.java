@@ -151,7 +151,6 @@ public class DecorationController {
             return response;
         }
 
-        // 直接装备，不卸下同分类的其他装饰品
         ud.setIsEquipped(true);
         userDecorationRepository.save(ud);
 
@@ -281,8 +280,12 @@ public class DecorationController {
     public Map<String, Object> getCurrentTombstone(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
         Grave grave = graveRepository.findByUserId(userId).orElse(new Grave(userId));
+        String style = grave.getTombstoneStyle();
+        if (style == null || style.isEmpty()) {
+            style = "default";
+        }
         response.put("success", true);
-        response.put("style", grave.getTombstoneStyle());
+        response.put("style", style);
         return response;
     }
 }
