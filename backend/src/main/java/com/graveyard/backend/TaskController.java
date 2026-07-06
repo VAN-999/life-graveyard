@@ -129,16 +129,6 @@ public class TaskController {
         return response;
     }
 
-    @GetMapping("/test-assign")
-    public String testAssign(@RequestParam Long userId) {
-        try {
-            reportService.assignDailyTasks(userId);
-            return "分配完成，请去数据库查看 user_tasks 表";
-        } catch (Exception e) {
-            return "报错：" + e.getMessage();
-        }
-    }
-
     @PostMapping("/check")
     public Map<String, Object> checkTasks(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
@@ -195,7 +185,8 @@ public class TaskController {
                 if (data.getLastActiveAt() == null) return false;
                 try {
                     int hour = Integer.parseInt(data.getLastActiveAt().split(":")[0]);
-                    return hour >= value || hour < 4;
+                    // 凌晨 0 点到 value 点（如 value=4 表示 0-4 点）
+                    return hour >= 0 && hour < value;
                 } catch (Exception e) {
                     return false;
                 }
