@@ -3,7 +3,7 @@
     <img :src="bgImage" class="bg-image" alt="墓园背景" />
     <div class="star-container" ref="starContainer"></div>
 
-    <!-- ====== 雾气层（在墓碑和装饰品之上） ====== -->
+    <!-- ====== 雾气层 ====== -->
     <div class="fog-layer">
       <div class="fog-container">
         <div class="fog fog-1"></div>
@@ -227,7 +227,7 @@ defineExpose({
   50% { opacity: 1; }
 }
 
-/* ====== 雾气特效（在墓碑和装饰品之上） ====== */
+/* ====== 雾气特效（深色可见版） ====== */
 .fog-layer {
   position: absolute;
   inset: 0;
@@ -250,40 +250,37 @@ defineExpose({
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  filter: blur(60px);
+  filter: blur(80px);
 }
 
 .fog-1 {
-  background: radial-gradient(ellipse at 20% 30%, rgba(180, 190, 200, 0.25) 0%, rgba(160, 175, 190, 0.10) 40%, transparent 70%);
+  background: radial-gradient(ellipse at 30% 40%, rgba(120, 130, 140, 0.45) 0%, rgba(80, 90, 100, 0.20) 40%, transparent 70%);
   animation: fogFloat 20s ease-in-out infinite alternate;
 }
 
 .fog-2 {
-  background: radial-gradient(ellipse at 70% 60%, rgba(170, 185, 200, 0.22) 0%, rgba(150, 165, 180, 0.08) 40%, transparent 70%);
+  background: radial-gradient(ellipse at 70% 50%, rgba(100, 110, 120, 0.40) 0%, rgba(70, 80, 90, 0.18) 40%, transparent 70%);
   animation: fogFloat 25s ease-in-out infinite alternate-reverse;
   animation-delay: 3s;
 }
 
 .fog-3 {
-  background: radial-gradient(ellipse at 40% 80%, rgba(160, 175, 190, 0.18) 0%, rgba(140, 155, 170, 0.06) 40%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 80%, rgba(90, 100, 110, 0.35) 0%, rgba(60, 70, 80, 0.15) 40%, transparent 70%);
   animation: fogFloat 18s ease-in-out infinite alternate;
   animation-delay: 6s;
 }
 
 @keyframes fogFloat {
   0% {
-    transform: translateX(-3%) translateY(0) scale(1);
-    opacity: 0.3;
+    transform: translateX(-5%) translateY(0) scale(1);
+    opacity: 0.6;
   }
-  33% {
-    opacity: 0.5;
-  }
-  66% {
-    opacity: 0.3;
+  50% {
+    opacity: 0.9;
   }
   100% {
-    transform: translateX(3%) translateY(-5%) scale(1.05);
-    opacity: 0.4;
+    transform: translateX(5%) translateY(-8%) scale(1.08);
+    opacity: 0.7;
   }
 }
 
