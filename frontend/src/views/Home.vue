@@ -462,7 +462,6 @@ const dataForm = ref({
 
 const canvasRef = ref(null)
 
-// ====== 签到 ======
 const showCheckin = ref(false)
 const checkinDays = ref([])
 const checkinStats = ref({})
@@ -470,10 +469,8 @@ const checkinYear = ref(0)
 const checkinMonth = ref(0)
 const emptyDays = ref(0)
 
-// ====== 墓碑款式 ======
-const tombstoneStyle = ref('classic')
+const tombstoneStyle = ref('default')
 
-// ====== 计算属性 ======
 const epitaph = computed(() => reportData.value?.epitaph || '此人安息于此')
 const deathScore = computed(() => reportData.value?.deathScore || 0)
 const deathReason = computed(() => reportData.value?.deathReason || '今天还没死')
@@ -492,6 +489,18 @@ const filteredDecorations = computed(() => {
   if (selectedCategory.value === '全部') return decorations.value
   return decorations.value.filter(d => d.category === selectedCategory.value)
 })
+
+// ====== 获取款式 key ======
+const getStyleKey = (name) => {
+  const map = {
+    '极简白碑': 'classic',
+    '花岗岩黑碑': 'black',
+    '赛博霓虹碑': 'neon',
+    '十字架碑': 'cross',
+    '风化古碑': 'ancient'
+  }
+  return map[name] || name
+}
 
 // ====== 加载函数 ======
 const loadUserInfo = async () => {
@@ -652,7 +661,7 @@ const loadData = async () => {
   }
 }
 
-// ====== 签到函数 ======
+// ====== 签到 ======
 const openCheckin = () => {
   showCheckin.value = true
   loadCheckinData()
@@ -737,23 +746,16 @@ const loadCheckinDataByMonth = async (year, month) => {
   }
 }
 
-// ====== 墓碑款式工具 ======
-const getStyleKey = (name) => {
-  const map = {
-    '极简白碑': 'classic',
-    '花岗岩黑碑': 'black',
-    '赛博霓虹碑': 'neon',
-    '十字架碑': 'cross',
-    '风化古碑': 'ancient'
-  }
-  return map[name] || name
-}
-
+// ====== 墓碑操作 ======
 const switchTombstone = async (styleName) => {
   if (!user.value) return
   const style = getStyleKey(styleName)
-  if (!style || style === 'classic') {
+  if (!style) {
     alert('未知的墓碑款式')
+    return
+  }
+  if (tombstoneStyle.value === style) {
+    alert('已经是当前款式了 💀')
     return
   }
   if (!confirm(`确定要更换为「${styleName}」吗？`)) return
@@ -775,7 +777,7 @@ const removeTombstone = async () => {
   if (!user.value) return
   if (!confirm('确定要卸下当前墓碑，恢复默认款式吗？')) return
   try {
-    const res = await axios.post(`${API_BASE}/api/v1/decorations/tombstone/switch?userId=${user.value.id}&style=classic`)
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/tombstone/switch?userId=${user.value.id}&style=default`)
     if (res.data.success) {
       alert(`✅ 已恢复默认墓碑`)
       await loadTombstoneStyle()
