@@ -309,14 +309,25 @@
                 {{ item.isEquipped ? '✅ 已装备' : '未装备' }}
               </div>
 
-              <button
-                  v-if="item.category === 'TOMBSTONE'"
-                  @click="switchTombstone(item.name)"
-                  class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-1.5 rounded-lg transition"
-              >
-                🪦 更换
-              </button>
+              <!-- ====== 墓碑专用：更换/卸下 ====== -->
+              <template v-if="item.category === 'TOMBSTONE'">
+                <button
+                    v-if="tombstoneStyle === getStyleKey(item.name)"
+                    @click="removeTombstone"
+                    class="mt-2 w-full bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-1.5 rounded-lg transition"
+                >
+                  🪦 卸下
+                </button>
+                <button
+                    v-else
+                    @click="switchTombstone(item.name)"
+                    class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-1.5 rounded-lg transition"
+                >
+                  🪦 更换
+                </button>
+              </template>
 
+              <!-- 普通装饰：装备/卸下 -->
               <button
                   v-else-if="!item.isEquipped"
                   @click="equipDecoration(item.userDecorationId)"
@@ -726,6 +737,57 @@ const loadCheckinDataByMonth = async (year, month) => {
   }
 }
 
+// ====== 墓碑款式工具 ======
+const getStyleKey = (name) => {
+  const map = {
+    '极简白碑': 'classic',
+    '花岗岩黑碑': 'black',
+    '赛博霓虹碑': 'neon',
+    '十字架碑': 'cross',
+    '风化古碑': 'ancient'
+  }
+  return map[name] || name
+}
+
+const switchTombstone = async (styleName) => {
+  if (!user.value) return
+  const style = getStyleKey(styleName)
+  if (!style || style === 'classic') {
+    alert('未知的墓碑款式')
+    return
+  }
+  if (!confirm(`确定要更换为「${styleName}」吗？`)) return
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/tombstone/switch?userId=${user.value.id}&style=${style}`)
+    if (res.data.success) {
+      alert(`✅ ${res.data.message}`)
+      await loadTombstoneStyle()
+      window.location.reload()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('切换失败，墓场暂时罢工 ☠️')
+  }
+}
+
+const removeTombstone = async () => {
+  if (!user.value) return
+  if (!confirm('确定要卸下当前墓碑，恢复默认款式吗？')) return
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/tombstone/switch?userId=${user.value.id}&style=classic`)
+    if (res.data.success) {
+      alert(`✅ 已恢复默认墓碑`)
+      await loadTombstoneStyle()
+      window.location.reload()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('卸下失败，墓场暂时罢工 ☠️')
+  }
+}
+
 // ====== 任务操作 ======
 const openTaskDetail = (task) => {
   selectedTask.value = task
@@ -820,35 +882,6 @@ const deleteDecoration = async (userDecorationId) => {
   } catch (error) {
     console.error('删除失败:', error)
     alert('删除失败，墓场暂时罢工 ☠️')
-  }
-}
-
-const switchTombstone = async (styleName) => {
-  if (!user.value) return
-  const styleMap = {
-    '极简白碑': 'classic',
-    '花岗岩黑碑': 'black',
-    '赛博霓虹碑': 'neon',
-    '十字架碑': 'cross',
-    '风化古碑': 'ancient'
-  }
-  const style = styleMap[styleName]
-  if (!style) {
-    alert('未知的墓碑款式')
-    return
-  }
-  if (!confirm(`确定要更换为「${styleName}」吗？`)) return
-  try {
-    const res = await axios.post(`${API_BASE}/api/v1/decorations/tombstone/switch?userId=${user.value.id}&style=${style}`)
-    if (res.data.success) {
-      alert(`✅ ${res.data.message}`)
-      await loadTombstoneStyle()
-      window.location.reload()
-    } else {
-      alert(`❌ ${res.data.message}`)
-    }
-  } catch (error) {
-    alert('切换失败，墓场暂时罢工 ☠️')
   }
 }
 
