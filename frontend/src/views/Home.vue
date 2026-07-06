@@ -11,7 +11,6 @@
         <span class="text-gray-400">🪙 冥币: <span class="text-yellow-400 font-bold">{{ user?.hellMoney || 0 }}</span></span>
         <span class="text-gray-400">📈 Lv.{{ user?.level || 1 }}</span>
         <span class="text-gray-300">{{ user?.username || '未知' }}</span>
-        <!-- 签到按钮 -->
         <button @click="openCheckin" class="text-gray-300 hover:text-yellow-400 transition text-sm">
           📅 签到
         </button>
@@ -43,10 +42,7 @@
         </div>
       </aside>
 
-      <section
-          class="flex-1 flex flex-col bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden"
-          @click="deselectDecoration"
-      >
+      <section class="flex-1 flex flex-col bg-black/20 border border-gray-800/50 rounded-2xl backdrop-blur-sm relative overflow-hidden" @click="deselectDecoration">
         <Graveyard
             ref="graveyardRef"
             :username="user?.username || '墓场主'"
@@ -312,8 +308,17 @@
               <div class="text-xs mt-1" :class="item.isEquipped ? 'text-green-400' : 'text-gray-500'">
                 {{ item.isEquipped ? '✅ 已装备' : '未装备' }}
               </div>
+
               <button
-                  v-if="!item.isEquipped"
+                  v-if="item.category === 'TOMBSTONE'"
+                  @click="switchTombstone(item.name)"
+                  class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-1.5 rounded-lg transition"
+              >
+                🪦 更换
+              </button>
+
+              <button
+                  v-else-if="!item.isEquipped"
                   @click="equipDecoration(item.userDecorationId)"
                   class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-1.5 rounded-lg transition"
               >
@@ -326,6 +331,7 @@
               >
                 卸下
               </button>
+
               <button
                   @click="deleteDecoration(item.userDecorationId)"
                   class="mt-1 w-full bg-red-900/50 hover:bg-red-800 text-white text-xs font-medium py-1 rounded-lg transition"
@@ -341,68 +347,63 @@
         </button>
       </div>
     </div>
-  </div>
 
-  <!-- ====== 签到月历弹窗 ====== -->
-  <div v-if="showCheckin" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="closeCheckin">
-    <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xl font-bold text-white">📅 每日签到</h3>
-        <button @click="closeCheckin" class="text-gray-400 hover:text-white text-xl">✕</button>
-      </div>
-
-      <!-- 签到信息 -->
-      <div class="flex items-center justify-between mb-4 text-sm">
-        <span class="text-gray-400">连续签到 <span class="text-yellow-400 font-bold">{{ checkinStats.consecutiveDays || 0 }}</span> 天</span>
-        <span class="text-gray-400">本月签到 <span class="text-yellow-400 font-bold">{{ checkinStats.monthCount || 0 }}</span> 天</span>
-      </div>
-
-      <!-- 月历 -->
-      <div class="mb-4">
-        <div class="flex items-center justify-between mb-2">
-          <button @click="changeMonth(-1)" class="text-gray-400 hover:text-white px-2">‹</button>
-          <span class="text-white font-medium">{{ checkinYear }} 年 {{ checkinMonth }} 月</span>
-          <button @click="changeMonth(1)" class="text-gray-400 hover:text-white px-2">›</button>
+    <!-- ====== 签到月历弹窗 ====== -->
+    <div v-if="showCheckin" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="closeCheckin">
+      <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-white">📅 每日签到</h3>
+          <button @click="closeCheckin" class="text-gray-400 hover:text-white text-xl">✕</button>
         </div>
 
-        <!-- 星期头 -->
-        <div class="grid grid-cols-7 gap-1 mb-1">
-          <div v-for="d in ['一','二','三','四','五','六','日']" :key="d" class="text-center text-gray-500 text-xs py-1">
-            {{ d }}
+        <div class="flex items-center justify-between mb-4 text-sm">
+          <span class="text-gray-400">连续签到 <span class="text-yellow-400 font-bold">{{ checkinStats.consecutiveDays || 0 }}</span> 天</span>
+          <span class="text-gray-400">本月签到 <span class="text-yellow-400 font-bold">{{ checkinStats.monthCount || 0 }}</span> 天</span>
+        </div>
+
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <button @click="changeMonth(-1)" class="text-gray-400 hover:text-white px-2">‹</button>
+            <span class="text-white font-medium">{{ checkinYear }} 年 {{ checkinMonth }} 月</span>
+            <button @click="changeMonth(1)" class="text-gray-400 hover:text-white px-2">›</button>
+          </div>
+
+          <div class="grid grid-cols-7 gap-1 mb-1">
+            <div v-for="d in ['一','二','三','四','五','六','日']" :key="d" class="text-center text-gray-500 text-xs py-1">
+              {{ d }}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-7 gap-1">
+            <div v-for="i in emptyDays" :key="'empty-' + i" class="text-center py-2"></div>
+            <div
+                v-for="day in checkinDays"
+                :key="day.date"
+                class="text-center py-2 rounded-lg text-sm"
+                :class="{
+                'bg-yellow-600/30 text-yellow-400 border border-yellow-600/50': day.checked,
+                'bg-red-600/20 text-red-400 border border-red-600/30': day.isToday && !day.checked,
+                'text-gray-400 hover:bg-gray-800 cursor-pointer': !day.checked,
+                'text-yellow-400': day.checked
+              }"
+                @click="day.checked ? null : doCheckin()"
+            >
+              {{ day.day }}
+              <span v-if="day.checked" class="block text-[8px] text-yellow-500">✓</span>
+              <span v-if="day.isToday && !day.checked" class="block text-[8px] text-red-400">今日</span>
+            </div>
           </div>
         </div>
 
-        <!-- 日期格子 -->
-        <div class="grid grid-cols-7 gap-1">
-          <div v-for="i in emptyDays" :key="'empty-' + i" class="text-center py-2"></div>
-          <div
-              v-for="day in checkinDays"
-              :key="day.date"
-              class="text-center py-2 rounded-lg text-sm"
-              :class="{
-            'bg-yellow-600/30 text-yellow-400 border border-yellow-600/50': day.checked,
-            'bg-red-600/20 text-red-400 border border-red-600/30': day.isToday && !day.checked,
-            'text-gray-400 hover:bg-gray-800 cursor-pointer': !day.checked,
-            'text-yellow-400': day.checked
-          }"
-              @click="day.checked ? null : doCheckin()"
-          >
-            {{ day.day }}
-            <span v-if="day.checked" class="block text-[8px] text-yellow-500">✓</span>
-            <span v-if="day.isToday && !day.checked" class="block text-[8px] text-red-400">今日</span>
-          </div>
-        </div>
+        <button
+            @click="doCheckin"
+            :disabled="checkinStats.todayChecked"
+            class="w-full py-3 rounded-lg font-medium transition"
+            :class="checkinStats.todayChecked ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-yellow-600 hover:bg-yellow-700 text-white'"
+        >
+          {{ checkinStats.todayChecked ? '✅ 今日已签到' : '☠️ 签到领 15 冥币' }}
+        </button>
       </div>
-
-      <!-- 签到按钮 -->
-      <button
-          @click="doCheckin"
-          :disabled="checkinStats.todayChecked"
-          class="w-full py-3 rounded-lg font-medium transition"
-          :class="checkinStats.todayChecked ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-yellow-600 hover:bg-yellow-700 text-white'"
-      >
-        {{ checkinStats.todayChecked ? '✅ 今日已签到' : '☠️ 签到领 15 冥币' }}
-      </button>
     </div>
   </div>
 </template>
@@ -414,7 +415,6 @@ import Graveyard from '../components/Graveyard.vue'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://life-graveyard-production.up.railway.app'
 
-// ====== 用户 ======
 const user = ref(null)
 const todayData = ref(null)
 const reportData = ref(null)
@@ -424,21 +424,17 @@ const decorationStates = ref([])
 const graveyardRef = ref(null)
 const selectedDecorationId = ref(null)
 
-// ====== 商店 ======
 const showShop = ref(false)
 const shopTab = ref('store')
 const decorations = ref([])
 const selectedCategory = ref('全部')
 const buying = ref(false)
-
 const myDecorations = ref([])
 
-// ====== 任务 ======
 const taskList = ref([])
 const taskProgress = ref(0)
 const taskTotal = ref(0)
 
-// ====== 其他 ======
 const showTaskDetail = ref(false)
 const selectedTask = ref(null)
 const showDataModal = ref(false)
@@ -462,97 +458,9 @@ const checkinStats = ref({})
 const checkinYear = ref(0)
 const checkinMonth = ref(0)
 const emptyDays = ref(0)
-const currentMonth = ref('')
 
-const openCheckin = () => {
-  showCheckin.value = true
-  loadCheckinData()
-}
-
-const closeCheckin = () => {
-  showCheckin.value = false
-}
-
-const loadCheckinData = async () => {
-  if (!user.value) return
-  try {
-    // 加载月历
-    const calendarRes = await axios.get(`${API_BASE}/api/v1/checkin/calendar?userId=${user.value.id}`)
-    if (calendarRes.data.success) {
-      checkinDays.value = calendarRes.data.days
-      checkinYear.value = calendarRes.data.year
-      checkinMonth.value = calendarRes.data.month
-      // 计算第一天是星期几（周一为0）
-      const firstDay = calendarRes.data.firstDayOfWeek || 1
-      emptyDays.value = firstDay - 1
-    }
-
-    // 加载统计
-    const statsRes = await axios.get(`${API_BASE}/api/v1/checkin/stats?userId=${user.value.id}`)
-    if (statsRes.data.success) {
-      checkinStats.value = statsRes.data
-    }
-  } catch (error) {
-    console.error('加载签到数据失败:', error)
-  }
-}
-
-const doCheckin = async () => {
-  if (!user.value) return
-  if (checkinStats.value.todayChecked) {
-    alert('今天已经签到过了 💀')
-    return
-  }
-  try {
-    const res = await axios.post(`${API_BASE}/api/v1/checkin/do?userId=${user.value.id}`)
-    if (res.data.success) {
-      alert(`✅ ${res.data.message}`)
-      await loadCheckinData()
-      await fetchUserInfo()
-      // 检查任务（墓园常客）
-      try {
-        await axios.post(`${API_BASE}/api/v1/tasks/check?userId=${user.value.id}`)
-      } catch (e) {}
-      await loadTasks()
-    } else {
-      alert(`❌ ${res.data.message}`)
-    }
-  } catch (error) {
-    alert('签到失败，墓场暂时罢工 ☠️')
-  }
-}
-
-const changeMonth = (delta) => {
-  // 切换月份
-  const newMonth = checkinMonth.value + delta
-  let year = checkinYear.value
-  let month = newMonth
-  if (month > 12) { month = 1; year++ }
-  if (month < 1) { month = 12; year-- }
-  checkinYear.value = year
-  checkinMonth.value = month
-  loadCheckinDataByMonth(year, month)
-}
-
-const loadCheckinDataByMonth = async (year, month) => {
-  if (!user.value) return
-  try {
-    const monthStr = `${year}-${String(month).padStart(2, '0')}`
-    const res = await axios.get(`${API_BASE}/api/v1/checkin/calendar?userId=${user.value.id}&month=${monthStr}`)
-    if (res.data.success) {
-      checkinDays.value = res.data.days
-      const firstDay = res.data.firstDayOfWeek || 1
-      emptyDays.value = firstDay - 1
-    }
-    // 统计信息还是用当前月份的
-    const statsRes = await axios.get(`${API_BASE}/api/v1/checkin/stats?userId=${user.value.id}`)
-    if (statsRes.data.success) {
-      checkinStats.value = statsRes.data
-    }
-  } catch (error) {
-    console.error('加载签到数据失败:', error)
-  }
-}
+// ====== 墓碑款式 ======
+const tombstoneStyle = ref('classic')
 
 // ====== 计算属性 ======
 const epitaph = computed(() => reportData.value?.epitaph || '此人安息于此')
@@ -574,7 +482,7 @@ const filteredDecorations = computed(() => {
   return decorations.value.filter(d => d.category === selectedCategory.value)
 })
 
-// ====== loadUserInfo ======
+// ====== 加载函数 ======
 const loadUserInfo = async () => {
   const userStr = localStorage.getItem('user')
   if (!userStr) {
@@ -591,7 +499,6 @@ const loadUserInfo = async () => {
   user.value = data
 }
 
-// ====== 其他函数 ======
 const fetchUserInfo = async () => {
   if (!user.value) return
   try {
@@ -694,6 +601,18 @@ const loadMyDecorations = async () => {
   }
 }
 
+const loadTombstoneStyle = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/tombstone/current?userId=${user.value.id}`)
+    if (res.data.success) {
+      tombstoneStyle.value = res.data.style
+    }
+  } catch (error) {
+    console.error('加载墓碑款式失败:', error)
+  }
+}
+
 const loadData = async () => {
   await loadUserInfo()
   await loadTasks()
@@ -703,9 +622,8 @@ const loadData = async () => {
   await loadDecorationStates()
   await loadDecorationsList()
   await loadMyDecorations()
-  await loadTombstoneStyle()  // 加这一行
+  await loadTombstoneStyle()
 
-  // 自动补全缺失的装饰状态
   if (user.value) {
     const decoIds = equippedDecorations.value.map(d => d.userDecorationId)
     const stateIds = decorationStates.value.map(s => s.userDecorationId)
@@ -720,6 +638,91 @@ const loadData = async () => {
     if (missing.length > 0) {
       await loadDecorationStates()
     }
+  }
+}
+
+// ====== 签到函数 ======
+const openCheckin = () => {
+  showCheckin.value = true
+  loadCheckinData()
+}
+
+const closeCheckin = () => {
+  showCheckin.value = false
+}
+
+const loadCheckinData = async () => {
+  if (!user.value) return
+  try {
+    const calendarRes = await axios.get(`${API_BASE}/api/v1/checkin/calendar?userId=${user.value.id}`)
+    if (calendarRes.data.success) {
+      checkinDays.value = calendarRes.data.days
+      checkinYear.value = calendarRes.data.year
+      checkinMonth.value = calendarRes.data.month
+      const firstDay = calendarRes.data.firstDayOfWeek || 1
+      emptyDays.value = firstDay - 1
+    }
+
+    const statsRes = await axios.get(`${API_BASE}/api/v1/checkin/stats?userId=${user.value.id}`)
+    if (statsRes.data.success) {
+      checkinStats.value = statsRes.data
+    }
+  } catch (error) {
+    console.error('加载签到数据失败:', error)
+  }
+}
+
+const doCheckin = async () => {
+  if (!user.value) return
+  if (checkinStats.value.todayChecked) {
+    alert('今天已经签到过了 💀')
+    return
+  }
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/checkin/do?userId=${user.value.id}`)
+    if (res.data.success) {
+      alert(`✅ ${res.data.message}`)
+      await loadCheckinData()
+      await fetchUserInfo()
+      try {
+        await axios.post(`${API_BASE}/api/v1/tasks/check?userId=${user.value.id}`)
+      } catch (e) {}
+      await loadTasks()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('签到失败，墓场暂时罢工 ☠️')
+  }
+}
+
+const changeMonth = (delta) => {
+  const newMonth = checkinMonth.value + delta
+  let year = checkinYear.value
+  let month = newMonth
+  if (month > 12) { month = 1; year++ }
+  if (month < 1) { month = 12; year-- }
+  checkinYear.value = year
+  checkinMonth.value = month
+  loadCheckinDataByMonth(year, month)
+}
+
+const loadCheckinDataByMonth = async (year, month) => {
+  if (!user.value) return
+  try {
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`
+    const res = await axios.get(`${API_BASE}/api/v1/checkin/calendar?userId=${user.value.id}&month=${monthStr}`)
+    if (res.data.success) {
+      checkinDays.value = res.data.days
+      const firstDay = res.data.firstDayOfWeek || 1
+      emptyDays.value = firstDay - 1
+    }
+    const statsRes = await axios.get(`${API_BASE}/api/v1/checkin/stats?userId=${user.value.id}`)
+    if (statsRes.data.success) {
+      checkinStats.value = statsRes.data
+    }
+  } catch (error) {
+    console.error('加载签到数据失败:', error)
   }
 }
 
@@ -817,6 +820,35 @@ const deleteDecoration = async (userDecorationId) => {
   } catch (error) {
     console.error('删除失败:', error)
     alert('删除失败，墓场暂时罢工 ☠️')
+  }
+}
+
+const switchTombstone = async (styleName) => {
+  if (!user.value) return
+  const styleMap = {
+    '极简白碑': 'classic',
+    '花岗岩黑碑': 'black',
+    '赛博霓虹碑': 'neon',
+    '十字架碑': 'cross',
+    '风化古碑': 'ancient'
+  }
+  const style = styleMap[styleName]
+  if (!style) {
+    alert('未知的墓碑款式')
+    return
+  }
+  if (!confirm(`确定要更换为「${styleName}」吗？`)) return
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/tombstone/switch?userId=${user.value.id}&style=${style}`)
+    if (res.data.success) {
+      alert(`✅ ${res.data.message}`)
+      await loadTombstoneStyle()
+      window.location.reload()
+    } else {
+      alert(`❌ ${res.data.message}`)
+    }
+  } catch (error) {
+    alert('切换失败，墓场暂时罢工 ☠️')
   }
 }
 
@@ -935,22 +967,6 @@ const closeShop = () => {
 const logout = () => {
   localStorage.removeItem('user')
   window.location.href = '/'
-}
-
-// ====== 墓碑款式 ======
-const tombstoneStyle = ref('classic')
-
-// 加载当前墓碑款式
-const loadTombstoneStyle = async () => {
-  if (!user.value) return
-  try {
-    const res = await axios.get(`${API_BASE}/api/v1/decorations/tombstone/current?userId=${user.value.id}`)
-    if (res.data.success) {
-      tombstoneStyle.value = res.data.style
-    }
-  } catch (error) {
-    console.error('加载墓碑款式失败:', error)
-  }
 }
 
 onMounted(() => {
