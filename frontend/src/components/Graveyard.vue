@@ -8,7 +8,8 @@
         <div class="shadow-wrapper">
           <img :src="shadowImage" class="tomb-shadow-img" alt="阴影" />
         </div>
-        <img :src="tombstoneImage" class="tomb-png" alt="墓碑" />
+        <!-- 墓碑图片：从 public 加载 -->
+        <img :src="currentTombstoneUrl" class="tomb-png" alt="墓碑" />
       </div>
     </div>
 
@@ -35,16 +36,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import bgImage from '../assets/cemetery-bg.jpg'
-import tombstoneImage from '../assets/tombstone.png'
 import shadowImage from '../assets/tombstone-shadow.png'
 
 const props = defineProps({
   username: { type: String, default: '安息于此' },
   equippedDecorations: { type: Array, default: () => [] },
   decorationStates: { type: Array, default: () => [] },
-  selectedId: { type: Number, default: null }
+  selectedId: { type: Number, default: null },
+  tombstoneStyle: { type: String, default: 'classic' }
 })
 
 const emit = defineEmits(['update-state', 'select-decoration'])
@@ -52,6 +53,16 @@ const emit = defineEmits(['update-state', 'select-decoration'])
 const canvasRef = ref(null)
 const starContainer = ref(null)
 
+// ====== 墓碑图片：从 public 加载 ======
+const getTombstoneUrl = (style) => {
+  return `/assets/decor/tombstone-${style}.png`
+}
+
+const currentTombstoneUrl = computed(() => {
+  return getTombstoneUrl(props.tombstoneStyle)
+})
+
+// ====== 装饰品 ======
 const editableDecorations = ref([])
 
 watch(
@@ -94,6 +105,7 @@ const mergeDecorations = () => {
   editableDecorations.value = newList
 }
 
+// ====== 拖拽 ======
 let dragData = null
 
 const startDrag = (event, deco) => {
@@ -135,6 +147,7 @@ const selectDecoration = (id) => {
   emit('select-decoration', id)
 }
 
+// ====== 星星 ======
 const generateStars = () => {
   if (!starContainer.value) return
   for (let i = 0; i < 60; i++) {
