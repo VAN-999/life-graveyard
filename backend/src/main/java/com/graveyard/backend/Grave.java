@@ -14,13 +14,13 @@ public class Grave {
     private Long userId;
 
     @Column(name = "tombstone_style", length = 50)
-    private String tombstoneStyle = "CLASSIC";
+    private String tombstoneStyle = "classic";
 
     @Column(name = "pet_id")
-    private Long petId;  // 当前装备的宠物ID
+    private Long petId;
 
     @Column(name = "effect_id")
-    private Long effectId;  // 当前装备的特效ID
+    private Long effectId;
 
     @Column(name = "background_music", length = 50)
     private String backgroundMusic = "SILENCE";
@@ -32,11 +32,10 @@ public class Grave {
 
     public Grave(Long userId) {
         this.userId = userId;
-        this.tombstoneStyle = "CLASSIC";
+        this.tombstoneStyle = "classic";
         this.visitCount = 0;
     }
 
-    // Getter & Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

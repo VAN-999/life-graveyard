@@ -23,6 +23,9 @@ public class DecorationController {
     @Autowired
     private DecorationStateRepository decorationStateRepository;
 
+    @Autowired
+    private GraveRepository graveRepository;
+
     // ====== 获取所有装饰品 ======
     @GetMapping("/list")
     public Map<String, Object> listAll() {
@@ -129,7 +132,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 装备装饰品（不互斥，可同时装备多个） ======
+    // ====== 装备装饰品 ======
     @PostMapping("/equip")
     public Map<String, Object> equip(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -223,7 +226,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 删除装饰品（有事务注解，可正常删除） ======
+    // ====== 删除装饰品 ======
     @DeleteMapping("/delete")
     @Transactional
     public Map<String, Object> delete(@RequestParam Long userDecorationId) {
@@ -240,7 +243,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 从墓场移除装饰（不删记录，只删位置） ======
+    // ====== 从墓场移除装饰 ======
     @PostMapping("/state/delete")
     public Map<String, Object> deleteState(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -252,6 +255,34 @@ public class DecorationController {
             response.put("success", false);
             response.put("message", "移除失败");
         }
+        return response;
+    }
+
+    // ====== 切换墓碑款式 ======
+    @PostMapping("/tombstone/switch")
+    public Map<String, Object> switchTombstone(@RequestParam Long userId, @RequestParam String style) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Grave grave = graveRepository.findByUserId(userId).orElse(new Grave(userId));
+            grave.setTombstoneStyle(style);
+            graveRepository.save(grave);
+            response.put("success", true);
+            response.put("message", "墓碑已更换 ⚰️");
+            response.put("style", style);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "更换失败: " + e.getMessage());
+        }
+        return response;
+    }
+
+    // ====== 获取用户墓碑款式 ======
+    @GetMapping("/tombstone/current")
+    public Map<String, Object> getCurrentTombstone(@RequestParam Long userId) {
+        Map<String, Object> response = new HashMap<>();
+        Grave grave = graveRepository.findByUserId(userId).orElse(new Grave(userId));
+        response.put("success", true);
+        response.put("style", grave.getTombstoneStyle());
         return response;
     }
 }
