@@ -50,6 +50,7 @@
             :equippedDecorations="equippedDecorations"
             :decorationStates="decorationStates"
             :selectedId="selectedDecorationId"
+            :tombstoneStyle="tombstoneStyle"
             @update-state="onUpdateState"
             @select-decoration="onSelectDecoration"
         />
@@ -536,6 +537,7 @@ const loadData = async () => {
   await loadDecorationStates()
   await loadDecorationsList()
   await loadMyDecorations()
+  await loadTombstoneStyle()  // 加这一行
 
   // 自动补全缺失的装饰状态
   if (user.value) {
@@ -767,6 +769,22 @@ const closeShop = () => {
 const logout = () => {
   localStorage.removeItem('user')
   window.location.href = '/'
+}
+
+// ====== 墓碑款式 ======
+const tombstoneStyle = ref('classic')
+
+// 加载当前墓碑款式
+const loadTombstoneStyle = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/tombstone/current?userId=${user.value.id}`)
+    if (res.data.success) {
+      tombstoneStyle.value = res.data.style
+    }
+  } catch (error) {
+    console.error('加载墓碑款式失败:', error)
+  }
 }
 
 onMounted(() => {
