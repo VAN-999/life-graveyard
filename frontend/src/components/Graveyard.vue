@@ -3,14 +3,8 @@
     <img :src="bgImage" class="bg-image" alt="墓园背景" />
     <div class="star-container" ref="starContainer"></div>
 
-    <!-- ====== 雾气层 ====== -->
-    <div class="fog-layer">
-      <div class="fog-container">
-        <div class="fog fog-1"></div>
-        <div class="fog fog-2"></div>
-        <div class="fog fog-3"></div>
-      </div>
-    </div>
+    <canvas ref="fireflyCanvas" class="effect-canvas" v-show="showFireflies"></canvas>
+    <canvas ref="snowCanvas" class="effect-canvas" v-show="showSnow"></canvas>
 
     <div class="tomb-wrap">
       <div class="tomb-group">
@@ -59,13 +53,24 @@ const props = defineProps({
   equippedDecorations: { type: Array, default: () => [] },
   decorationStates: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
-  tombstoneStyle: { type: String, default: 'default' }
+  tombstoneStyle: { type: String, default: 'default' },
+  effect: { type: String, default: 'all' }
 })
 
 const emit = defineEmits(['update-state', 'select-decoration'])
 
 const canvasRef = ref(null)
 const starContainer = ref(null)
+const fireflyCanvas = ref(null)
+const snowCanvas = ref(null)
+
+const showFireflies = computed(() => {
+  return props.effect === 'all' || props.effect === 'fireflies'
+})
+
+const showSnow = computed(() => {
+  return props.effect === 'all' || props.effect === 'snow'
+})
 
 const tombstoneMap = {
   default: tombstoneDefault,
@@ -178,9 +183,140 @@ const generateStars = () => {
   }
 }
 
+let fireflyAnimationId = null
+let snowAnimationId = null
+
+const initFireflies = () => {
+  const canvas = fireflyCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  const rect = canvas.parentElement.getBoundingClientRect()
+  canvas.width = rect.width
+  canvas.height = rect.height
+
+  const fireflies = []
+  const count = 25
+
+  for (let i = 0; i < count; i++) {
+    fireflies.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      radius: Math.random() * 3 + 1.5,
+      baseX: Math.random() * canvas.width,
+      baseY: Math.random() * canvas.height,
+      phase: Math.random() * Math.PI * 2
+    })
+  }
+
+  function drawFireflies() {
+    if (!showFireflies.value) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      fireflyAnimationId = requestAnimationFrame(drawFireflies)
+      return
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const time = Date.now() / 1000
+
+    fireflies.forEach(f => {
+      f.x = f.baseX + Math.sin(time * 0.5 + f.phase) * 40
+      f.y = f.baseY + Math.cos(time * 0.3 + f.phase) * 30
+      const opacity = 0.3 + Math.sin(time * 0.8 + f.phase) * 0.3 + 0.2
+
+      const gradient = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius * 6)
+      gradient.addColorStop(0, `rgba(180, 255, 200, ${opacity})`)
+      gradient.addColorStop(0.3, `rgba(120, 255, 160, ${opacity * 0.5})`)
+      gradient.addColorStop(1, 'rgba(100, 255, 150, 0)')
+
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, f.radius * 6, 0, Math.PI * 2)
+      ctx.fillStyle = gradient
+      ctx.fill()
+
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(200, 255, 220, ${opacity + 0.3})`
+      ctx.fill()
+    })
+
+    fireflyAnimationId = requestAnimationFrame(drawFireflies)
+  }
+
+  drawFireflies()
+
+  window.addEventListener('resize', () => {
+    const rect = canvas.parentElement.getBoundingClientRect()
+    canvas.width = rect.width
+    canvas.height = rect.height
+  })
+}
+
+const initSnow = () => {
+  const canvas = snowCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  const rect = canvas.parentElement.getBoundingClientRect()
+  canvas.width = rect.width
+  canvas.height = rect.height
+
+  const flakes = []
+  const count = 80
+
+  for (let i = 0; i < count; i++) {
+    flakes.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      radius: Math.random() * 3 + 1.5,
+      speedY: Math.random() * 0.8 + 0.3,
+      speedX: (Math.random() - 0.5) * 0.3,
+      opacity: Math.random() * 0.6 + 0.2
+    })
+  }
+
+  function drawSnow() {
+    if (!showSnow.value) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      snowAnimationId = requestAnimationFrame(drawSnow)
+      return
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    flakes.forEach(f => {
+      f.y += f.speedY
+      f.x += f.speedX + Math.sin(f.y / 100) * 0.2
+      if (f.y > canvas.height) {
+        f.y = -5
+        f.x = Math.random() * canvas.width
+      }
+      if (f.x < 0) f.x = canvas.width
+      if (f.x > canvas.width) f.x = 0
+
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255, 255, 255, ${f.opacity})`
+      ctx.fill()
+    })
+
+    snowAnimationId = requestAnimationFrame(drawSnow)
+  }
+
+  drawSnow()
+
+  window.addEventListener('resize', () => {
+    const rect = canvas.parentElement.getBoundingClientRect()
+    canvas.width = rect.width
+    canvas.height = rect.height
+  })
+}
+
 onMounted(() => {
   generateStars()
   mergeDecorations()
+  setTimeout(() => {
+    initFireflies()
+    initSnow()
+  }, 100)
 })
 
 defineExpose({
@@ -227,68 +363,20 @@ defineExpose({
   50% { opacity: 1; }
 }
 
-/* ====== 雾气特效（深色可见版） ====== */
-.fog-layer {
+.effect-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 10;
+  z-index: 2;
   pointer-events: none;
-  overflow: hidden;
-}
-
-.fog-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.fog {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  filter: blur(80px);
-}
-
-.fog-1 {
-  background: radial-gradient(ellipse at 30% 40%, rgba(120, 130, 140, 0.45) 0%, rgba(80, 90, 100, 0.20) 40%, transparent 70%);
-  animation: fogFloat 20s ease-in-out infinite alternate;
-}
-
-.fog-2 {
-  background: radial-gradient(ellipse at 70% 50%, rgba(100, 110, 120, 0.40) 0%, rgba(70, 80, 90, 0.18) 40%, transparent 70%);
-  animation: fogFloat 25s ease-in-out infinite alternate-reverse;
-  animation-delay: 3s;
-}
-
-.fog-3 {
-  background: radial-gradient(ellipse at 50% 80%, rgba(90, 100, 110, 0.35) 0%, rgba(60, 70, 80, 0.15) 40%, transparent 70%);
-  animation: fogFloat 18s ease-in-out infinite alternate;
-  animation-delay: 6s;
-}
-
-@keyframes fogFloat {
-  0% {
-    transform: translateX(-5%) translateY(0) scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  100% {
-    transform: translateX(5%) translateY(-8%) scale(1.08);
-    opacity: 0.7;
-  }
 }
 
 .tomb-wrap {
   position: absolute;
   right: 18%;
   bottom: 18%;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -326,7 +414,7 @@ defineExpose({
 
 .decor-item {
   position: absolute;
-  z-index: 3;
+  z-index: 4;
   pointer-events: auto;
   user-select: none;
   transition: border 0.1s ease;

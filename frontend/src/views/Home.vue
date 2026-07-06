@@ -14,6 +14,9 @@
         <button @click="openCheckin" class="text-gray-300 hover:text-yellow-400 transition text-sm">
           📅 签到
         </button>
+        <button @click="showEffectPanel = true" class="text-gray-300 hover:text-white transition text-sm">
+          🎆 特效
+        </button>
         <button @click="showShop = true" class="text-gray-300 hover:text-white transition text-sm">
           🛒 商店
         </button>
@@ -51,6 +54,7 @@
             :decorationStates="decorationStates"
             :selectedId="selectedDecorationId"
             :tombstoneStyle="tombstoneStyle"
+            :effect="selectedEffect"
             @update-state="onUpdateState"
             @select-decoration="onSelectDecoration"
         />
@@ -309,7 +313,6 @@
                 {{ item.isEquipped ? '✅ 已装备' : '未装备' }}
               </div>
 
-              <!-- ====== 墓碑专用：更换/卸下 ====== -->
               <template v-if="item.category === 'TOMBSTONE'">
                 <button
                     v-if="tombstoneStyle === getStyleKey(item.name)"
@@ -327,7 +330,6 @@
                 </button>
               </template>
 
-              <!-- 普通装饰：装备/卸下 -->
               <button
                   v-else-if="!item.isEquipped"
                   @click="equipDecoration(item.userDecorationId)"
@@ -416,6 +418,30 @@
         </button>
       </div>
     </div>
+
+    <!-- ====== 特效选择弹窗 ====== -->
+    <div v-if="showEffectPanel" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showEffectPanel = false">
+      <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-white">🎆 环境特效</h3>
+          <button @click="showEffectPanel = false" class="text-gray-400 hover:text-white text-xl">✕</button>
+        </div>
+        <div class="space-y-2">
+          <button
+              v-for="option in effectOptions"
+              :key="option.value"
+              @click="selectedEffect = option.value; showEffectPanel = false"
+              class="w-full text-left px-4 py-3 rounded-lg transition"
+              :class="selectedEffect === option.value ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+        <div class="mt-4 text-xs text-gray-500 text-center">
+          当前特效：{{ effectOptions.find(o => o.value === selectedEffect)?.label }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -471,6 +497,16 @@ const emptyDays = ref(0)
 
 const tombstoneStyle = ref('default')
 
+// ====== 特效选择 ======
+const showEffectPanel = ref(false)
+const selectedEffect = ref('all')
+const effectOptions = [
+  { value: 'all', label: '✨ 全部（萤火虫 + 飘雪）' },
+  { value: 'fireflies', label: '🌿 只显示萤火虫' },
+  { value: 'snow', label: '❄️ 只显示飘雪' },
+  { value: 'none', label: '🚫 关闭特效' }
+]
+
 const epitaph = computed(() => reportData.value?.epitaph || '此人安息于此')
 const deathScore = computed(() => reportData.value?.deathScore || 0)
 const deathReason = computed(() => reportData.value?.deathReason || '今天还没死')
@@ -490,7 +526,6 @@ const filteredDecorations = computed(() => {
   return decorations.value.filter(d => d.category === selectedCategory.value)
 })
 
-// ====== 获取款式 key ======
 const getStyleKey = (name) => {
   const map = {
     '极简白碑': 'classic',
@@ -502,7 +537,6 @@ const getStyleKey = (name) => {
   return map[name] || name
 }
 
-// ====== 加载函数 ======
 const loadUserInfo = async () => {
   const userStr = localStorage.getItem('user')
   if (!userStr) {
@@ -959,7 +993,6 @@ const saveAllStates = async () => {
   }
 }
 
-// ====== 提交数据 ======
 const submitData = async () => {
   if (!user.value) return
   submitting.value = true
