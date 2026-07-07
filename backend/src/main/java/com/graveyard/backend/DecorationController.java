@@ -31,23 +31,19 @@ public class DecorationController {
     @Autowired
     private RobberyLogRepository robberyLogRepository;
 
-    // ====== 获取所有装饰品 ======
     @GetMapping("/list")
     public Map<String, Object> listAll() {
         Map<String, Object> response = new HashMap<>();
         List<Decoration> all = decorationRepository.findAll();
-
         Map<String, List<Decoration>> grouped = new HashMap<>();
         for (Decoration d : all) {
-            grouped.computeIfAbsent(d.getCategory(), k -> new java.util.ArrayList<>()).add(d);
+            grouped.computeIfAbsent(d.getCategory(), k -> new ArrayList<>()).add(d);
         }
-
         response.put("success", true);
         response.put("data", grouped);
         return response;
     }
 
-    // ====== 获取分类装饰品 ======
     @GetMapping("/category/{category}")
     public Map<String, Object> listByCategory(@PathVariable String category) {
         Map<String, Object> response = new HashMap<>();
@@ -57,25 +53,21 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 购买装饰品 ======
     @PostMapping("/buy")
     public Map<String, Object> buy(@RequestParam Long userId, @RequestParam Long decorationId) {
         Map<String, Object> response = new HashMap<>();
-
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             response.put("success", false);
             response.put("message", "用户不存在，你是鬼吗？");
             return response;
         }
-
         Decoration decoration = decorationRepository.findById(decorationId).orElse(null);
         if (decoration == null) {
             response.put("success", false);
             response.put("message", "这个装饰品不存在，你是不是在盗墓？");
             return response;
         }
-
         if (user.getHellMoney() < decoration.getPrice()) {
             response.put("success", false);
             response.put("message", "冥币不够，先去赚点再回来买。");
@@ -83,37 +75,29 @@ public class DecorationController {
             response.put("price", decoration.getPrice());
             return response;
         }
-
         user.setHellMoney(user.getHellMoney() - decoration.getPrice());
         userRepository.save(user);
-
         UserDecoration userDeco = new UserDecoration(userId, decorationId);
         UserDecoration saved = userDecorationRepository.save(userDeco);
-
         DecorationState state = new DecorationState(userId, saved.getId());
         decorationStateRepository.save(state);
-
         response.put("success", true);
         response.put("message", "购买成功！你拥有了 " + decoration.getName() + " ⚰️");
         response.put("remainingMoney", user.getHellMoney());
         return response;
     }
 
-    // ====== 查看用户拥有的装饰品 ======
     @GetMapping("/my")
     public Map<String, Object> myDecorations(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
-
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             response.put("success", false);
             response.put("message", "用户不存在");
             return response;
         }
-
         List<UserDecoration> myList = userDecorationRepository.findByUserId(userId);
-
-        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        List<Map<String, Object>> result = new ArrayList<>();
         for (UserDecoration ud : myList) {
             Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);
             if (d != null) {
@@ -127,61 +111,50 @@ public class DecorationController {
                 result.add(item);
             }
         }
-
         response.put("success", true);
         response.put("money", user.getHellMoney());
         response.put("data", result);
         return response;
     }
 
-    // ====== 装备装饰品 ======
     @PostMapping("/equip")
     public Map<String, Object> equip(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
-
         UserDecoration ud = userDecorationRepository.findById(userDecorationId).orElse(null);
         if (ud == null) {
             response.put("success", false);
             response.put("message", "你没有这个装饰品");
             return response;
         }
-
         Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);
         if (d == null) {
             response.put("success", false);
             response.put("message", "装饰品不存在");
             return response;
         }
-
         ud.setIsEquipped(true);
         userDecorationRepository.save(ud);
-
         response.put("success", true);
         response.put("message", "已装备 " + d.getName() + " ⚰️");
         return response;
     }
 
-    // ====== 卸下装饰品 ======
     @PostMapping("/unequip")
     public Map<String, Object> unequip(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
-
         UserDecoration ud = userDecorationRepository.findById(userDecorationId).orElse(null);
         if (ud == null) {
             response.put("success", false);
             response.put("message", "你没有这个装饰品");
             return response;
         }
-
         ud.setIsEquipped(false);
         userDecorationRepository.save(ud);
-
         response.put("success", true);
         response.put("message", "已卸下");
         return response;
     }
 
-    // ====== 获取所有装饰位置 ======
     @GetMapping("/states")
     public Map<String, Object> getStates(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
@@ -191,7 +164,6 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 保存单个装饰位置 ======
     @PostMapping("/state/save")
     public Map<String, Object> saveState(@RequestBody DecorationState state) {
         Map<String, Object> response = new HashMap<>();
@@ -206,7 +178,6 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 创建装饰位置状态 ======
     @PostMapping("/state/create")
     public Map<String, Object> createState(@RequestParam Long userId, @RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -227,7 +198,6 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 删除装饰品 ======
     @DeleteMapping("/delete")
     @Transactional
     public Map<String, Object> delete(@RequestParam Long userDecorationId) {
@@ -244,7 +214,6 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 从墓场移除装饰 ======
     @PostMapping("/state/delete")
     public Map<String, Object> deleteState(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
@@ -259,7 +228,6 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 切换墓碑款式 ======
     @PostMapping("/tombstone/switch")
     public Map<String, Object> switchTombstone(@RequestParam Long userId, @RequestParam String style) {
         Map<String, Object> response = new HashMap<>();
@@ -277,7 +245,6 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 获取用户墓碑款式 ======
     @GetMapping("/tombstone/current")
     public Map<String, Object> getCurrentTombstone(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
@@ -291,7 +258,6 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 盗墓 ======
     @PostMapping("/rob")
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
         Map<String, Object> response = new HashMap<>();
@@ -302,7 +268,15 @@ public class DecorationController {
             return response;
         }
 
-        if (!friendRepository.existsByUserIdAndFriendId(robberId, victimId)) {
+        List<Friend> friends = friendRepository.findByUserId(robberId);
+        boolean isFriend = false;
+        for (Friend f : friends) {
+            if (f.getFriendId().equals(victimId)) {
+                isFriend = true;
+                break;
+            }
+        }
+        if (!isFriend) {
             response.put("success", false);
             response.put("message", "不是你的好友，不能盗墓 💀");
             return response;
@@ -322,7 +296,6 @@ public class DecorationController {
         }
 
         List<UserDecoration> victimDecorations = userDecorationRepository.findByUserIdAndIsEquippedTrue(victimId);
-
         List<UserDecoration> robTargets = new ArrayList<>();
         for (UserDecoration ud : victimDecorations) {
             Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);
@@ -388,10 +361,6 @@ public class DecorationController {
         List<UserDecoration> robberDecorations = userDecorationRepository.findByUserId(robberId);
         boolean hasDecoration = !robberDecorations.isEmpty();
 
-        String penaltyType;
-        int penaltyAmount = 0;
-        String penaltyMessage = "";
-
         if (hasDecoration) {
             int randomIndex = random.nextInt(robberDecorations.size());
             UserDecoration toRemove = robberDecorations.get(randomIndex);
@@ -401,17 +370,13 @@ public class DecorationController {
             userDecorationRepository.deleteById(toRemove.getId());
             decorationStateRepository.deleteByUserDecorationId(toRemove.getId());
 
-            penaltyType = "LOST_DECORATION";
-            penaltyAmount = 0;
-            penaltyMessage = "墓场诅咒！你丢失了 " + removedName + " ☠️";
-
-            RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, penaltyType, 0);
+            RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, "LOST_DECORATION", 0);
             robberyLogRepository.save(log);
 
             response.put("success", true);
             response.put("robbed", false);
-            response.put("message", penaltyMessage);
-            response.put("penaltyType", penaltyType);
+            response.put("message", "墓场诅咒！你丢失了 " + removedName + " ☠️");
+            response.put("penaltyType", "LOST_DECORATION");
             response.put("lostDecoration", removedName);
             return response;
         }
@@ -420,31 +385,24 @@ public class DecorationController {
             robber.setHellMoney(robber.getHellMoney() - penalty);
             userRepository.save(robber);
 
-            penaltyType = "LOST_MONEY";
-            penaltyAmount = penalty;
-            penaltyMessage = "墓场诅咒！你被扣除了 " + penalty + " 冥币 ☠️";
-
-            RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, penaltyType, penalty);
+            RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, "LOST_MONEY", penalty);
             robberyLogRepository.save(log);
 
             response.put("success", true);
             response.put("robbed", false);
-            response.put("message", penaltyMessage);
-            response.put("penaltyType", penaltyType);
+            response.put("message", "墓场诅咒！你被扣除了 " + penalty + " 冥币 ☠️");
+            response.put("penaltyType", "LOST_MONEY");
             response.put("penaltyAmount", penalty);
             return response;
         }
 
-        penaltyType = "POOR_EXEMPT";
-        penaltyMessage = "你穷得连诅咒都懒得理你，今天盗墓功能已锁定，明天再来吧。";
-
-        RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, penaltyType, 0);
+        RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, "POOR_EXEMPT", 0);
         robberyLogRepository.save(log);
 
         response.put("success", true);
         response.put("robbed", false);
-        response.put("message", penaltyMessage);
-        response.put("penaltyType", penaltyType);
+        response.put("message", "你穷得连诅咒都懒得理你，今天盗墓功能已锁定，明天再来吧。");
+        response.put("penaltyType", "POOR_EXEMPT");
         response.put("poorExempt", true);
         return response;
     }
