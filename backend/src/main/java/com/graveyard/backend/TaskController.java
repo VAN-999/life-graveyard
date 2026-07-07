@@ -116,7 +116,18 @@ public class TaskController {
         }
 
         user.setHellMoney(user.getHellMoney() + task.getRewardMoney());
+
+        // 加经验
+        int oldLevel = user.getExperience() / 10 + 1;
+        user.setExperience(user.getExperience() + 5);
         userRepository.save(user);
+        int newLevel = user.getExperience() / 10 + 1;
+
+        boolean levelUp = newLevel > oldLevel;
+        if (levelUp) {
+            user.setHellMoney(user.getHellMoney() + 15);
+            userRepository.save(user);
+        }
 
         userTask.setIsClaimed(true);
         userTask.setClaimedAt(java.time.LocalDateTime.now());
@@ -126,6 +137,12 @@ public class TaskController {
         response.put("message", "领取成功！获得了 " + task.getRewardMoney() + " 冥币 💀");
         response.put("rewardMoney", task.getRewardMoney());
         response.put("currentMoney", user.getHellMoney());
+        response.put("experience", user.getExperience());
+        response.put("level", newLevel);
+        response.put("levelUp", levelUp);
+        if (levelUp) {
+            response.put("levelUpMessage", "🎉 恭喜升级到 Lv." + newLevel + "！获得 15 冥币奖励！");
+        }
         return response;
     }
 

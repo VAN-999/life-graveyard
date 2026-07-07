@@ -35,6 +35,9 @@ public class User {
     @Column(name = "hell_money")
     private Integer hellMoney = 100;
 
+    @Column(name = "experience")
+    private Integer experience = 0;
+
     public User() {}
 
     public User(String username, String password, String email) {
@@ -46,6 +49,7 @@ public class User {
         this.status = "ALIVE";
         this.level = 1;
         this.hellMoney = 100;
+        this.experience = 0;
     }
 
     public Long getId() { return id; }
@@ -74,4 +78,7 @@ public class User {
 
     public Integer getHellMoney() { return hellMoney; }
     public void setHellMoney(Integer hellMoney) { this.hellMoney = hellMoney; }
+
+    public Integer getExperience() { return experience; }
+    public void setExperience(Integer experience) { this.experience = experience; }
 }

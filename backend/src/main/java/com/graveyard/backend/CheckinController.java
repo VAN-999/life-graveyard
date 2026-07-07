@@ -32,7 +32,6 @@ public class CheckinController {
 
         LocalDate today = LocalDate.now();
 
-        // 检查今天是否已签到
         if (checkinRepository.existsByUserIdAndCheckinDate(userId, today)) {
             response.put("success", false);
             response.put("message", "今天已经签到过了 💀");
@@ -40,7 +39,6 @@ public class CheckinController {
             return response;
         }
 
-        // 计算连续签到天数
         LocalDate yesterday = today.minusDays(1);
         int consecutiveDays = 1;
         Optional<Checkin> yesterdayCheckin = checkinRepository.findByUserIdAndCheckinDate(userId, yesterday);
@@ -48,26 +46,38 @@ public class CheckinController {
             consecutiveDays = yesterdayCheckin.get().getConsecutiveDays() + 1;
         }
 
-        // 保存签到记录
         Checkin checkin = new Checkin();
         checkin.setUserId(userId);
         checkin.setCheckinDate(today);
         checkin.setConsecutiveDays(consecutiveDays);
         checkinRepository.save(checkin);
 
-        // 发冥币
         int reward = 15;
         user.setHellMoney(user.getHellMoney() + reward);
-        userRepository.save(user);
 
-        // 顺便检查"墓园常客"任务
-        // 前端会调用 /tasks/check 来触发任务检查
+        // 加经验
+        int oldLevel = user.getExperience() / 10 + 1;
+        user.setExperience(user.getExperience() + 10);
+        userRepository.save(user);
+        int newLevel = user.getExperience() / 10 + 1;
+
+        boolean levelUp = newLevel > oldLevel;
+        if (levelUp) {
+            user.setHellMoney(user.getHellMoney() + 15);
+            userRepository.save(user);
+        }
 
         response.put("success", true);
         response.put("message", "签到成功！获得了 " + reward + " 冥币 ⚰️");
         response.put("reward", reward);
         response.put("consecutiveDays", consecutiveDays);
         response.put("totalMoney", user.getHellMoney());
+        response.put("experience", user.getExperience());
+        response.put("level", newLevel);
+        response.put("levelUp", levelUp);
+        if (levelUp) {
+            response.put("levelUpMessage", "🎉 恭喜升级到 Lv." + newLevel + "！获得 15 冥币奖励！");
+        }
         return response;
     }
 

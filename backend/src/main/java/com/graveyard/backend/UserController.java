@@ -57,13 +57,16 @@ public class UserController {
             return response;
         }
 
+        int level = user.getExperience() / 10 + 1;
+
         response.put("success", true);
         response.put("message", "登录成功！欢迎回到你的墓场 ⚰️");
         response.put("userId", user.getId());
         response.put("username", user.getUsername());
         response.put("graveStyle", user.getGraveStyle());
-        response.put("level", user.getLevel());
+        response.put("level", level);
         response.put("hellMoney", user.getHellMoney());
+        response.put("experience", user.getExperience());
         return response;
     }
 
@@ -76,8 +79,21 @@ public class UserController {
             response.put("message", "用户不存在");
             return response;
         }
+        int level = user.getExperience() / 10 + 1;
+        int nextLevelExp = level * 10;
+        int currentExp = user.getExperience() % 10;
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        data.put("hellMoney", user.getHellMoney());
+        data.put("level", level);
+        data.put("experience", user.getExperience());
+        data.put("currentLevelExp", currentExp);
+        data.put("nextLevelExp", nextLevelExp);
+
         response.put("success", true);
-        response.put("data", user);
+        response.put("data", data);
         return response;
     }
 }

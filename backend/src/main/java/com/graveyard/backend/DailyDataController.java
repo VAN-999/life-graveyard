@@ -13,23 +13,23 @@ public class DailyDataController {
     @Autowired
     private DailyDataRepository dailyDataRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     // 提交每日数据
     @PostMapping("/submit")
     public Map<String, Object> submit(@RequestBody DailyData data) {
         Map<String, Object> response = new HashMap<>();
 
-        // 如果前端没传日期，默认今天
         if (data.getRecordDate() == null) {
             data.setRecordDate(LocalDate.now());
         }
 
-        // 检查今天是否已经提交过了
         DailyData existing = dailyDataRepository
                 .findByUserIdAndRecordDate(data.getUserId(), data.getRecordDate())
                 .orElse(null);
 
         if (existing != null) {
-            // 更新已有数据
             existing.setSteps(data.getSteps());
             existing.setScreenTimeMinutes(data.getScreenTimeMinutes());
             existing.setKeyPresses(data.getKeyPresses());
@@ -39,14 +39,40 @@ public class DailyDataController {
             existing.setMomentsViewed(data.getMomentsViewed());
             dailyDataRepository.save(existing);
 
+            // 加经验
+            User user = userRepository.findById(data.getUserId()).orElse(null);
+            if (user != null) {
+                int oldLevel = user.getExperience() / 10 + 1;
+                user.setExperience(user.getExperience() + 3);
+                userRepository.save(user);
+                int newLevel = user.getExperience() / 10 + 1;
+                if (newLevel > oldLevel) {
+                    user.setHellMoney(user.getHellMoney() + 15);
+                    userRepository.save(user);
+                }
+            }
+
             response.put("success", true);
             response.put("message", "今日数据已更新 ⚰️");
             response.put("recordDate", existing.getRecordDate());
             return response;
         }
 
-        // 没有则新建
         dailyDataRepository.save(data);
+
+        // 加经验
+        User user = userRepository.findById(data.getUserId()).orElse(null);
+        if (user != null) {
+            int oldLevel = user.getExperience() / 10 + 1;
+            user.setExperience(user.getExperience() + 3);
+            userRepository.save(user);
+            int newLevel = user.getExperience() / 10 + 1;
+            if (newLevel > oldLevel) {
+                user.setHellMoney(user.getHellMoney() + 15);
+                userRepository.save(user);
+            }
+        }
+
         response.put("success", true);
         response.put("message", "今日数据提交成功 ⚰️");
         response.put("recordDate", data.getRecordDate());

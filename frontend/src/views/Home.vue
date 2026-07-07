@@ -9,7 +9,12 @@
       </div>
       <div class="flex items-center gap-6 text-sm">
         <span class="text-gray-400">🪙 冥币: <span class="text-yellow-400 font-bold">{{ user?.hellMoney || 0 }}</span></span>
-        <span class="text-gray-400">📈 Lv.{{ user?.level || 1 }}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-400 text-xs">Lv.{{ user?.level || 1 }}</span>
+          <div class="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+            <div class="h-full bg-yellow-400 rounded-full transition-all" :style="{ width: ((user?.currentLevelExp || 0) / (user?.nextLevelExp || 10) * 100) + '%' }"></div>
+          </div>
+        </div>
         <span class="text-gray-300">{{ user?.username || '未知' }}</span>
         <button @click="openCheckin" class="text-gray-300 hover:text-yellow-400 transition text-sm">
           📅 签到
@@ -550,7 +555,18 @@ const loadUserInfo = async () => {
   if (data.id === undefined && data.userId !== undefined) {
     data.id = data.userId
   }
-  user.value = data
+  // 从后端获取最新数据（包含等级和经验）
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/user/info?userId=${data.id}`)
+    if (res.data.success) {
+      user.value = res.data.data
+      localStorage.setItem('user', JSON.stringify(res.data.data))
+    } else {
+      user.value = data
+    }
+  } catch (error) {
+    user.value = data
+  }
 }
 
 const fetchUserInfo = async () => {
