@@ -452,12 +452,52 @@
     </div>
   </div>
 
+  <!-- ====== 盗墓日志弹窗 ====== -->
+  <div v-if="showRobberyLogs" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showRobberyLogs = false">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-bold text-white">📜 盗墓日志</h3>
+        <button @click="showRobberyLogs = false" class="text-gray-400 hover:text-white text-xl">✕</button>
+      </div>
+      <div v-if="robberyLogs.length === 0" class="text-center text-gray-500 py-8">
+        还没有盗墓记录 💀
+      </div>
+      <div
+          v-for="log in robberyLogs"
+          :key="log.id"
+          class="flex items-center justify-between p-3 bg-black/30 rounded-lg mb-2"
+      >
+        <div class="flex flex-col">
+        <span class="text-white text-sm">
+          {{ log.success ? '✅ 偷到了' : '❌ 失败了' }}
+          <span v-if="log.success">{{ log.decorationName }}</span>
+          <span v-else>
+            {{ log.penaltyType === 'LOST_MONEY' ? '扣了 ' + log.penaltyAmount + ' 冥币' : '' }}
+            {{ log.penaltyType === 'LOST_DECORATION' ? '丢了装饰品' : '' }}
+            {{ log.penaltyType === 'POOR_EXEMPT' ? '穷鬼豁免' : '' }}
+          </span>
+        </span>
+          <span class="text-gray-500 text-xs">目标：{{ log.victimName }}</span>
+        </div>
+        <span class="text-gray-600 text-xs">{{ new Date(log.createdAt).toLocaleString() }}</span>
+      </div>
+    </div>
+  </div>
+
   <!-- ====== 好友面板 ====== -->
   <div v-if="showFriendPanel" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showFriendPanel = false">
     <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-xl font-bold text-white">👥 好友</h3>
-        <button @click="showFriendPanel = false" class="text-gray-400 hover:text-white text-xl">✕</button>
+        <div class="flex gap-2">
+          <button
+              @click="showRobberyLogs = true; loadRobberyLogs()"
+              class="px-3 py-1 rounded-lg text-sm transition bg-gray-800 text-gray-400 hover:bg-gray-700"
+          >
+            📜 日志
+          </button>
+          <button @click="showFriendPanel = false" class="text-gray-400 hover:text-white text-xl">✕</button>
+        </div>
       </div>
 
       <!-- 标签切换 -->
@@ -502,6 +542,12 @@
                 class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition"
             >
               🪦 串门
+            </button>
+            <button
+                @click="robFriend(friend.id)"
+                class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition"
+            >
+              💀 盗墓
             </button>
             <button
                 @click="deleteFriend(friend.id)"
@@ -684,6 +730,39 @@ const getStyleKey = (name) => {
     '风化古碑': 'ancient'
   }
   return map[name] || name
+}
+
+const robFriend = async (friendId) => {
+  if (!user.value) return
+  if (!confirm(`确定要盗墓「${friendId}」的墓场吗？成功率 70%，失败有惩罚 💀`)) return
+
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/decorations/rob?robberId=${user.value.id}&victimId=${friendId}`)
+    alert(res.data.message)
+    // 刷新相关数据
+    await loadMyDecorations()
+    await loadDecorations()
+    await loadDecorationStates()
+    await loadRobberyLogs()
+  } catch (error) {
+    alert('盗墓失败，墓场暂时罢工 ☠️')
+  }
+}
+
+// ====== 盗墓日志 ======
+const showRobberyLogs = ref(false)
+const robberyLogs = ref([])
+
+const loadRobberyLogs = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/decorations/robbery-logs?userId=${user.value.id}`)
+    if (res.data.success) {
+      robberyLogs.value = res.data.data
+    }
+  } catch (error) {
+    console.error('加载盗墓日志失败:', error)
+  }
 }
 
 const loadUserInfo = async () => {

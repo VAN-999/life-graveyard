@@ -264,6 +264,29 @@ public class DecorationController {
         return response;
     }
 
+    // ====== 获取盗墓日志 ======
+    @GetMapping("/robbery-logs")
+    public Map<String, Object> getRobberyLogs(@RequestParam Long userId) {
+        Map<String, Object> response = new HashMap<>();
+        List<RobberyLog> logs = robberyLogRepository.findByRobberIdOrderByCreatedAtDesc(userId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (RobberyLog log : logs) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", log.getId());
+            User victim = userRepository.findById(log.getVictimId()).orElse(null);
+            item.put("victimName", victim != null ? victim.getUsername() : "未知");
+            item.put("decorationName", log.getDecorationName());
+            item.put("success", log.getSuccess());
+            item.put("penaltyType", log.getPenaltyType());
+            item.put("penaltyAmount", log.getPenaltyAmount());
+            item.put("createdAt", log.getCreatedAt());
+            result.add(item);
+        }
+        response.put("success", true);
+        response.put("data", result);
+        return response;
+    }
+
     // ====== 盗墓（简化版） ======
     @PostMapping("/rob")
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
