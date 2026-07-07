@@ -84,15 +84,12 @@ public class DecorationController {
             return response;
         }
 
-        // 扣钱
         user.setHellMoney(user.getHellMoney() - decoration.getPrice());
         userRepository.save(user);
 
-        // 每次购买都插入一条新记录
         UserDecoration userDeco = new UserDecoration(userId, decorationId);
         UserDecoration saved = userDecorationRepository.save(userDeco);
 
-        // 创建默认状态
         DecorationState state = new DecorationState(userId, saved.getId());
         decorationStateRepository.save(state);
 
@@ -299,21 +296,18 @@ public class DecorationController {
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
         Map<String, Object> response = new HashMap<>();
 
-        // 1. 不能偷自己
         if (robberId.equals(victimId)) {
             response.put("success", false);
             response.put("message", "不能偷自己 💀");
             return response;
         }
 
-        // 2. 检查是否是好友
         if (!friendRepository.existsByUserIdAndFriendId(robberId, victimId)) {
             response.put("success", false);
             response.put("message", "不是你的好友，不能盗墓 💀");
             return response;
         }
 
-        // 3. 检查是否被穷鬼豁免锁定（今天内触发过穷鬼豁免）
         LocalDate today = LocalDate.now();
         if (robberyLogRepository.hasPoorExemptToday(robberId, today)) {
             response.put("success", false);
@@ -321,17 +315,14 @@ public class DecorationController {
             return response;
         }
 
-        // 4. 检查今天是否已经偷过这个好友
         if (robberyLogRepository.hasRobbedToday(robberId, victimId, today)) {
             response.put("success", false);
             response.put("message", "今天已经偷过这个好友了，明天再来吧 💀");
             return response;
         }
 
-        // 5. 获取受害者的装备装饰品（不包括墓碑）
         List<UserDecoration> victimDecorations = userDecorationRepository.findByUserIdAndIsEquippedTrue(victimId);
 
-        // 过滤掉墓碑分类
         List<UserDecoration> robTargets = new ArrayList<>();
         for (UserDecoration ud : victimDecorations) {
             Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);
@@ -340,21 +331,18 @@ public class DecorationController {
             }
         }
 
-        // 6. 检查是否有可偷的装饰品
         if (robTargets.isEmpty()) {
             response.put("success", false);
             response.put("message", "墓场太寒酸了，没什么好偷的 💀");
             return response;
         }
 
-        // 7. 检查好友是否至少保留1件（不能偷光）
         if (robTargets.size() <= 1) {
             response.put("success", false);
             response.put("message", "好友只剩一件装饰品了，做人留一线 ☠️");
             return response;
         }
 
-        // 8. 随机选一件要偷的装饰品
         Random random = new Random();
         int targetIndex = random.nextInt(robTargets.size());
         UserDecoration target = robTargets.get(targetIndex);
@@ -365,23 +353,17 @@ public class DecorationController {
             return response;
         }
 
-        // 9. 判断成功率（70%）
         boolean success = random.nextDouble() < 0.7;
 
         if (success) {
-            // ====== 偷盗成功 ======
-            // 从受害者移除装饰品
             userDecorationRepository.deleteById(target.getId());
             decorationStateRepository.deleteByUserDecorationId(target.getId());
 
-            // 给盗墓者添加该装饰品
             UserDecoration newDeco = new UserDecoration(robberId, targetDeco.getId());
             userDecorationRepository.save(newDeco);
-            // 创建默认状态
             DecorationState state = new DecorationState(robberId, newDeco.getId());
             decorationStateRepository.save(state);
 
-            // 记录日志
             RobberyLog log = new RobberyLog(robberId, victimId, targetDeco.getId(), targetDeco.getName(), true, null, 0);
             robberyLogRepository.save(log);
 
@@ -393,12 +375,9 @@ public class DecorationController {
             return response;
         }
 
-        // ====== 偷盗失败 ======
-        // 计算罚款金额（装饰品价格的40%）
         int penalty = (int) Math.round(targetDeco.getPrice() * 0.4);
         if (penalty < 1) penalty = 1;
 
-        // 获取盗墓者信息
         User robber = userRepository.findById(robberId).orElse(null);
         if (robber == null) {
             response.put("success", false);
@@ -406,7 +385,6 @@ public class DecorationController {
             return response;
         }
 
-        // 检查盗墓者是否有装饰品
         List<UserDecoration> robberDecorations = userDecorationRepository.findByUserId(robberId);
         boolean hasDecoration = !robberDecorations.isEmpty();
 
@@ -415,7 +393,6 @@ public class DecorationController {
         String penaltyMessage = "";
 
         if (hasDecoration) {
-            // 有装饰品：随机丢一件
             int randomIndex = random.nextInt(robberDecorations.size());
             UserDecoration toRemove = robberDecorations.get(randomIndex);
             Decoration removedDeco = decorationRepository.findById(toRemove.getDecorationId()).orElse(null);
@@ -439,9 +416,7 @@ public class DecorationController {
             return response;
         }
 
-        // 没有装饰品：检查冥币是否够扣
         if (robber.getHellMoney() >= penalty) {
-            // 扣冥币
             robber.setHellMoney(robber.getHellMoney() - penalty);
             userRepository.save(robber);
 
@@ -460,7 +435,6 @@ public class DecorationController {
             return response;
         }
 
-        // 穷鬼豁免：没钱没装饰品
         penaltyType = "POOR_EXEMPT";
         penaltyMessage = "你穷得连诅咒都懒得理你，今天盗墓功能已锁定，明天再来吧。";
 
