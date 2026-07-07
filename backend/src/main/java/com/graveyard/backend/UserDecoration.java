@@ -23,7 +23,11 @@ public class UserDecoration {
     @Column(name = "obtained_at", updatable = false)
     private LocalDateTime obtainedAt;
 
-    public UserDecoration() {}
+    // 注意：这里彻底删掉了 quantity 字段
+
+    public UserDecoration() {
+        this.obtainedAt = LocalDateTime.now();
+    }
 
     public UserDecoration(Long userId, Long decorationId) {
         this.userId = userId;
@@ -32,6 +36,7 @@ public class UserDecoration {
         this.obtainedAt = LocalDateTime.now();
     }
 
+    // Getter & Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

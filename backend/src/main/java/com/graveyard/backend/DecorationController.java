@@ -3,6 +3,9 @@ package com.graveyard.backend;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -30,6 +33,9 @@ public class DecorationController {
 
     @Autowired
     private RobberyLogRepository robberyLogRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @GetMapping("/list")
     public Map<String, Object> listAll() {
@@ -258,7 +264,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 盗墓（已临时跳过好友检查） ======
+    // ====== 盗墓（暴力版） ======
     @PostMapping("/rob")
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
         Map<String, Object> response = new HashMap<>();
@@ -268,13 +274,6 @@ public class DecorationController {
             response.put("message", "不能偷自己 💀");
             return response;
         }
-
-        // ====== 临时跳过好友检查 ======
-        // if (!friendRepository.isFriend(robberId, victimId)) {
-        //     response.put("success", false);
-        //     response.put("message", "不是你的好友，不能盗墓 💀");
-        //     return response;
-        // }
 
         LocalDate today = LocalDate.now();
         if (robberyLogRepository.hasPoorExemptToday(robberId, today)) {
@@ -289,13 +288,17 @@ public class DecorationController {
             return response;
         }
 
-        List<UserDecoration> victimDecorations = userDecorationRepository.findEquippedByUserId(victimId);
-        List<UserDecoration> robTargets = new ArrayList<>();
-        for (UserDecoration ud : victimDecorations) {
-            Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);
-            if (d != null && !"TOMBSTONE".equals(d.getCategory())) {
-                robTargets.add(ud);
-            }
+        // 暴力查所有装备的装饰品（不包括墓碑）
+        String sql = "SELECT ud.* FROM user_decorations ud " +
+                "JOIN decorations d ON ud.decoration_id = d.id " +
+                "WHERE ud.user_id = ? AND ud.is_equipped = 1 AND d.category != 'TOMBSTONE'";
+        Query query = entityManager.createNativeQuery(sql, UserDecoration.class);
+        query.setParameter(1, victimId);
+        List<UserDecoration> robTargets = query.getResultList();
+
+        System.out.println("🔥🔥🔥 可偷装饰品数量: " + robTargets.size());
+        for (UserDecoration ud : robTargets) {
+            System.out.println("🔥🔥🔥 可偷: id=" + ud.getId() + ", decoration_id=" + ud.getDecorationId());
         }
 
         if (robTargets.isEmpty()) {
