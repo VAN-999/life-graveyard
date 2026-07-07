@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/graveyard?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://reseau.proxy.rlwy.net:57341/railway?useSSL=false&serverTimezone=UTC
     username: root
-    password: 20061016
+    password: gSiCqPGWijtSZQHaTChFMpRhdsmjLsKm
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:

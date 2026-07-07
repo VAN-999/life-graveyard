@@ -289,6 +289,7 @@ public class DecorationController {
 
     // ====== 盗墓（简化版） ======
     @PostMapping("/rob")
+    @Transactional
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
         Map<String, Object> response = new HashMap<>();
 
@@ -298,8 +299,12 @@ public class DecorationController {
             return response;
         }
 
-        // 直接查受害者所有装饰品（不管装备、不管分类）
-        List<UserDecoration> allDecos = userDecorationRepository.findByUserId(victimId);
+        String sql = "SELECT * FROM user_decorations WHERE user_id = ?";
+        Query query = entityManager.createNativeQuery(sql, UserDecoration.class);
+        query.setParameter(1, victimId);
+        List<UserDecoration> allDecos = query.getResultList();
+
+        System.out.println("🔥🔥🔥 查询结果数量: " + allDecos.size());
 
         if (allDecos.isEmpty()) {
             response.put("success", false);
@@ -307,7 +312,6 @@ public class DecorationController {
             return response;
         }
 
-        // 随机选一件
         Random random = new Random();
         int targetIndex = random.nextInt(allDecos.size());
         UserDecoration target = allDecos.get(targetIndex);
@@ -319,21 +323,17 @@ public class DecorationController {
             return response;
         }
 
-        // 直接偷，70% 成功率
         boolean success = random.nextDouble() < 0.7;
 
         if (success) {
-            // 从受害者移除
             userDecorationRepository.deleteById(target.getId());
             decorationStateRepository.deleteByUserDecorationId(target.getId());
 
-            // 给盗墓者
             UserDecoration newDeco = new UserDecoration(robberId, targetDeco.getId());
             userDecorationRepository.save(newDeco);
             DecorationState state = new DecorationState(robberId, newDeco.getId());
             decorationStateRepository.save(state);
 
-            // 记录日志
             RobberyLog log = new RobberyLog(robberId, victimId, targetDeco.getId(), targetDeco.getName(), true, null, 0);
             robberyLogRepository.save(log);
 
@@ -345,7 +345,7 @@ public class DecorationController {
             return response;
         }
 
-        // 失败：扣钱或丢装饰品
+        // 失败惩罚
         int penalty = (int) Math.round(targetDeco.getPrice() * 0.4);
         if (penalty < 1) penalty = 1;
 
