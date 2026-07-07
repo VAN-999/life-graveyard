@@ -25,6 +25,9 @@
         <button @click="showShop = true" class="text-gray-300 hover:text-white transition text-sm">
           🛒 商店
         </button>
+        <button @click="showFriendPanel = true" class="text-gray-300 hover:text-white transition text-sm">
+          👥 好友
+        </button>
         <button @click="logout" class="text-gray-500 hover:text-red-400 transition text-sm">退出</button>
       </div>
     </header>
@@ -448,6 +451,147 @@
       </div>
     </div>
   </div>
+
+  <!-- ====== 好友面板 ====== -->
+  <div v-if="showFriendPanel" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showFriendPanel = false">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-bold text-white">👥 好友</h3>
+        <button @click="showFriendPanel = false" class="text-gray-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <!-- 标签切换 -->
+      <div class="flex gap-2 mb-4">
+        <button
+            @click="friendTab = 'list'"
+            class="px-4 py-1.5 rounded-lg text-sm transition"
+            :class="friendTab === 'list' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+        >
+          📋 好友 ({{ friends.length }})
+        </button>
+        <button
+            @click="friendTab = 'requests'; loadFriendRequests()"
+            class="px-4 py-1.5 rounded-lg text-sm transition"
+            :class="friendTab === 'requests' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+        >
+          📩 请求 ({{ friendRequests.length }})
+        </button>
+        <button
+            @click="friendTab = 'search'"
+            class="px-4 py-1.5 rounded-lg text-sm transition"
+            :class="friendTab === 'search' ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+        >
+          🔍 搜索
+        </button>
+      </div>
+
+      <!-- 好友列表 -->
+      <div v-if="friendTab === 'list'">
+        <div v-if="friends.length === 0" class="text-center text-gray-500 py-8">
+          还没有好友，去搜索添加吧 💀
+        </div>
+        <div
+            v-for="friend in friends"
+            :key="friend.id"
+            class="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition"
+        >
+          <span class="text-white">{{ friend.username }}</span>
+          <div class="flex gap-2">
+            <button
+                @click="visitGrave(friend.id)"
+                class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition"
+            >
+              🪦 串门
+            </button>
+            <button
+                @click="deleteFriend(friend.id)"
+                class="px-3 py-1 bg-red-900/50 hover:bg-red-800 text-white text-xs rounded-lg transition"
+            >
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 好友请求 -->
+      <div v-if="friendTab === 'requests'">
+        <div v-if="friendRequests.length === 0" class="text-center text-gray-500 py-8">
+          没有好友请求 💀
+        </div>
+        <div
+            v-for="req in friendRequests"
+            :key="req.requestId"
+            class="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition"
+        >
+          <span class="text-white">{{ req.username }}</span>
+          <div class="flex gap-2">
+            <button
+                @click="acceptFriendRequest(req.requestId)"
+                class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition"
+            >
+              同意
+            </button>
+            <button
+                @click="rejectFriendRequest(req.requestId)"
+                class="px-3 py-1 bg-red-900/50 hover:bg-red-800 text-white text-xs rounded-lg transition"
+            >
+              拒绝
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 搜索用户 -->
+      <div v-if="friendTab === 'search'">
+        <div class="flex gap-2 mb-4">
+          <input
+              v-model="searchKeyword"
+              type="text"
+              placeholder="输入用户名搜索..."
+              class="flex-1 bg-black/50 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-gray-500 focus:outline-none"
+              @keyup.enter="searchUsers()"
+          />
+          <button
+              @click="searchUsers()"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+          >
+            搜索
+          </button>
+        </div>
+        <div v-if="searchResults.length === 0 && searchKeyword" class="text-center text-gray-500 py-8">
+          没有找到用户 💀
+        </div>
+        <div
+            v-for="user in searchResults"
+            :key="user.id"
+            class="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition"
+        >
+          <span class="text-white">{{ user.username }}</span>
+          <button
+              v-if="user.isFriend"
+              class="px-3 py-1 bg-gray-600 text-white text-xs rounded-lg cursor-default"
+              disabled
+          >
+            已是好友
+          </button>
+          <button
+              v-else-if="user.hasRequest"
+              class="px-3 py-1 bg-yellow-600 text-white text-xs rounded-lg cursor-default"
+              disabled
+          >
+            已发送
+          </button>
+          <button
+              v-else
+              @click="sendFriendRequest(user.id)"
+              class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition"
+          >
+            添加好友
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -693,6 +837,7 @@ const loadData = async () => {
   await loadDecorationsList()
   await loadMyDecorations()
   await loadTombstoneStyle()
+  await loadFriends()
 
   if (user.value) {
     const decoIds = equippedDecorations.value.map(d => d.userDecorationId)
@@ -709,6 +854,107 @@ const loadData = async () => {
       await loadDecorationStates()
     }
   }
+}
+
+// ====== 好友系统 ======
+const showFriendPanel = ref(false)
+const friendTab = ref('list')
+const friends = ref([])
+const friendRequests = ref([])
+const searchKeyword = ref('')
+const searchResults = ref([])
+
+const loadFriends = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/friends/list?userId=${user.value.id}`)
+    if (res.data.success) {
+      friends.value = res.data.data
+    }
+  } catch (error) {
+    console.error('加载好友列表失败:', error)
+  }
+}
+
+const loadFriendRequests = async () => {
+  if (!user.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/friends/requests?userId=${user.value.id}`)
+    if (res.data.success) {
+      friendRequests.value = res.data.data
+    }
+  } catch (error) {
+    console.error('加载好友请求失败:', error)
+  }
+}
+
+const searchUsers = async () => {
+  if (!searchKeyword.value.trim()) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/friends/search?keyword=${searchKeyword.value}&currentUserId=${user.value.id}`)
+    if (res.data.success) {
+      searchResults.value = res.data.data
+    }
+  } catch (error) {
+    console.error('搜索用户失败:', error)
+  }
+}
+
+const sendFriendRequest = async (toUserId) => {
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/friends/request?fromUserId=${user.value.id}&toUserId=${toUserId}`)
+    alert(res.data.message)
+    if (res.data.success) {
+      await searchUsers()
+      await loadFriends()
+      await loadFriendRequests()
+    }
+  } catch (error) {
+    alert('发送好友请求失败 💀')
+  }
+}
+
+const acceptFriendRequest = async (requestId) => {
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/friends/accept?requestId=${requestId}`)
+    alert(res.data.message)
+    if (res.data.success) {
+      await loadFriendRequests()
+      await loadFriends()
+    }
+  } catch (error) {
+    alert('同意请求失败 💀')
+  }
+}
+
+const rejectFriendRequest = async (requestId) => {
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/friends/reject?requestId=${requestId}`)
+    alert(res.data.message)
+    if (res.data.success) {
+      await loadFriendRequests()
+    }
+  } catch (error) {
+    alert('拒绝请求失败 💀')
+  }
+}
+
+const deleteFriend = async (friendId) => {
+  if (!confirm('确定要删除这个好友吗？')) return
+  try {
+    const res = await axios.delete(`${API_BASE}/api/v1/friends/delete?userId=${user.value.id}&friendId=${friendId}`)
+    alert(res.data.message)
+    if (res.data.success) {
+      await loadFriends()
+    }
+  } catch (error) {
+    alert('删除好友失败 💀')
+  }
+}
+
+const visitGrave = (friendId) => {
+  // TODO: 查看好友墓场
+  alert('🚧 查看好友墓场功能开发中...')
 }
 
 // ====== 签到 ======
