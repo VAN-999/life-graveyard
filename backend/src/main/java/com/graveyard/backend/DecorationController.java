@@ -264,7 +264,7 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 盗墓（暴力版） ======
+    // ====== 盗墓（简化版） ======
     @PostMapping("/rob")
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
         Map<String, Object> response = new HashMap<>();
@@ -275,65 +275,42 @@ public class DecorationController {
             return response;
         }
 
-        LocalDate today = LocalDate.now();
-        if (robberyLogRepository.hasPoorExemptToday(robberId, today)) {
-            response.put("success", false);
-            response.put("message", "你今天已经触发过穷鬼豁免，盗墓功能已被锁定，明天再来吧 ☠️");
-            return response;
-        }
+        // 直接查受害者所有装饰品（不管装备、不管分类）
+        List<UserDecoration> allDecos = userDecorationRepository.findByUserId(victimId);
 
-        if (robberyLogRepository.hasRobbedToday(robberId, victimId, today)) {
-            response.put("success", false);
-            response.put("message", "今天已经偷过这个好友了，明天再来吧 💀");
-            return response;
-        }
-
-        // 暴力查所有装备的装饰品（不包括墓碑）
-        String sql = "SELECT ud.* FROM user_decorations ud " +
-                "JOIN decorations d ON ud.decoration_id = d.id " +
-                "WHERE ud.user_id = ? AND ud.is_equipped = 1 AND d.category != 'TOMBSTONE'";
-        Query query = entityManager.createNativeQuery(sql, UserDecoration.class);
-        query.setParameter(1, victimId);
-        List<UserDecoration> robTargets = query.getResultList();
-
-        System.out.println("🔥🔥🔥 可偷装饰品数量: " + robTargets.size());
-        for (UserDecoration ud : robTargets) {
-            System.out.println("🔥🔥🔥 可偷: id=" + ud.getId() + ", decoration_id=" + ud.getDecorationId());
-        }
-
-        if (robTargets.isEmpty()) {
+        if (allDecos.isEmpty()) {
             response.put("success", false);
             response.put("message", "墓场太寒酸了，没什么好偷的 💀");
             return response;
         }
 
-        if (robTargets.size() <= 1) {
-            response.put("success", false);
-            response.put("message", "好友只剩一件装饰品了，做人留一线 ☠️");
-            return response;
-        }
-
+        // 随机选一件
         Random random = new Random();
-        int targetIndex = random.nextInt(robTargets.size());
-        UserDecoration target = robTargets.get(targetIndex);
+        int targetIndex = random.nextInt(allDecos.size());
+        UserDecoration target = allDecos.get(targetIndex);
         Decoration targetDeco = decorationRepository.findById(target.getDecorationId()).orElse(null);
+
         if (targetDeco == null) {
             response.put("success", false);
             response.put("message", "装饰品不存在");
             return response;
         }
 
+        // 直接偷，70% 成功率
         boolean success = random.nextDouble() < 0.7;
 
         if (success) {
+            // 从受害者移除
             userDecorationRepository.deleteById(target.getId());
             decorationStateRepository.deleteByUserDecorationId(target.getId());
 
+            // 给盗墓者
             UserDecoration newDeco = new UserDecoration(robberId, targetDeco.getId());
             userDecorationRepository.save(newDeco);
             DecorationState state = new DecorationState(robberId, newDeco.getId());
             decorationStateRepository.save(state);
 
+            // 记录日志
             RobberyLog log = new RobberyLog(robberId, victimId, targetDeco.getId(), targetDeco.getName(), true, null, 0);
             robberyLogRepository.save(log);
 
@@ -345,6 +322,7 @@ public class DecorationController {
             return response;
         }
 
+        // 失败：扣钱或丢装饰品
         int penalty = (int) Math.round(targetDeco.getPrice() * 0.4);
         if (penalty < 1) penalty = 1;
 
@@ -355,12 +333,11 @@ public class DecorationController {
             return response;
         }
 
-        List<UserDecoration> robberDecorations = userDecorationRepository.findByUserId(robberId);
-        boolean hasDecoration = !robberDecorations.isEmpty();
+        List<UserDecoration> robberDecos = userDecorationRepository.findByUserId(robberId);
 
-        if (hasDecoration) {
-            int randomIndex = random.nextInt(robberDecorations.size());
-            UserDecoration toRemove = robberDecorations.get(randomIndex);
+        if (!robberDecos.isEmpty()) {
+            int idx = random.nextInt(robberDecos.size());
+            UserDecoration toRemove = robberDecos.get(idx);
             Decoration removedDeco = decorationRepository.findById(toRemove.getDecorationId()).orElse(null);
             String removedName = removedDeco != null ? removedDeco.getName() : "装饰品";
 
