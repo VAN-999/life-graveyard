@@ -258,6 +258,7 @@ public class DecorationController {
         return response;
     }
 
+    // ====== 盗墓（已临时跳过好友检查） ======
     @PostMapping("/rob")
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
         Map<String, Object> response = new HashMap<>();
@@ -268,19 +269,12 @@ public class DecorationController {
             return response;
         }
 
-        List<Friend> friends = friendRepository.findByUserId(robberId);
-        boolean isFriend = false;
-        for (Friend f : friends) {
-            if (f.getFriendId().equals(victimId)) {
-                isFriend = true;
-                break;
-            }
-        }
-        if (!isFriend) {
-            response.put("success", false);
-            response.put("message", "不是你的好友，不能盗墓 💀");
-            return response;
-        }
+        // ====== 临时跳过好友检查 ======
+        // if (!friendRepository.isFriend(robberId, victimId)) {
+        //     response.put("success", false);
+        //     response.put("message", "不是你的好友，不能盗墓 💀");
+        //     return response;
+        // }
 
         LocalDate today = LocalDate.now();
         if (robberyLogRepository.hasPoorExemptToday(robberId, today)) {
@@ -295,7 +289,7 @@ public class DecorationController {
             return response;
         }
 
-        List<UserDecoration> victimDecorations = userDecorationRepository.findByUserIdAndIsEquippedTrue(victimId);
+        List<UserDecoration> victimDecorations = userDecorationRepository.findEquippedByUserId(victimId);
         List<UserDecoration> robTargets = new ArrayList<>();
         for (UserDecoration ud : victimDecorations) {
             Decoration d = decorationRepository.findById(ud.getDecorationId()).orElse(null);

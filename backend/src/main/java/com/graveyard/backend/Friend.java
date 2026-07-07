@@ -20,9 +20,7 @@ public class Friend {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    public Friend() {
-        this.createdAt = LocalDateTime.now();
-    }
+    public Friend() {}
 
     public Friend(Long userId, Long friendId) {
         this.userId = userId;

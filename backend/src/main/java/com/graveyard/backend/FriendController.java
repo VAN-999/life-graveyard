@@ -21,8 +21,6 @@ public class FriendController {
     @GetMapping("/search")
     public Map<String, Object> searchUsers(@RequestParam String keyword, @RequestParam Long currentUserId) {
         Map<String, Object> response = new HashMap<>();
-
-        // 搜索用户名包含关键词的用户（排除自己）
         List<User> users = userRepository.findByUsernameContainingIgnoreCase(keyword);
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -32,11 +30,9 @@ public class FriendController {
             item.put("id", u.getId());
             item.put("username", u.getUsername());
 
-            // 检查是否已经是好友
-            boolean isFriend = friendRepository.existsByUserIdAndFriendId(currentUserId, u.getId());
+            boolean isFriend = friendRepository.isFriend(currentUserId, u.getId());
             item.put("isFriend", isFriend);
 
-            // 检查是否有待处理的好友请求
             boolean hasRequest = friendRequestRepository.existsByFromUserIdAndToUserIdAndStatus(currentUserId, u.getId(), "pending");
             item.put("hasRequest", hasRequest);
 
@@ -59,30 +55,25 @@ public class FriendController {
             return response;
         }
 
-        // 检查是否已经是好友
-        if (friendRepository.existsByUserIdAndFriendId(fromUserId, toUserId)) {
+        if (friendRepository.isFriend(fromUserId, toUserId)) {
             response.put("success", false);
             response.put("message", "已经是好友了");
             return response;
         }
 
-        // 检查是否已有待处理的请求
         if (friendRequestRepository.existsByFromUserIdAndToUserIdAndStatus(fromUserId, toUserId, "pending")) {
             response.put("success", false);
             response.put("message", "已发送好友请求，等待对方同意");
             return response;
         }
 
-        // 检查对方是否已经向你发送了请求（如果是，直接变成好友）
         Optional<FriendRequest> reverseRequest = friendRequestRepository.findByFromUserIdAndToUserId(toUserId, fromUserId);
         if (reverseRequest.isPresent() && "pending".equals(reverseRequest.get().getStatus())) {
-            // 直接成为好友
             Friend friend1 = new Friend(fromUserId, toUserId);
             Friend friend2 = new Friend(toUserId, fromUserId);
             friendRepository.save(friend1);
             friendRepository.save(friend2);
 
-            // 更新请求状态
             FriendRequest req = reverseRequest.get();
             req.setStatus("accepted");
             friendRequestRepository.save(req);
@@ -136,7 +127,6 @@ public class FriendController {
             return response;
         }
 
-        // 双方成为好友
         Friend friend1 = new Friend(request.getFromUserId(), request.getToUserId());
         Friend friend2 = new Friend(request.getToUserId(), request.getFromUserId());
         friendRepository.save(friend1);
@@ -175,7 +165,7 @@ public class FriendController {
     public Map<String, Object> getFriends(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
 
-        List<Friend> friends = friendRepository.findByUserId(userId);
+        List<Friend> friends = friendRepository.findFriendsByUserId(userId);
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Friend f : friends) {
