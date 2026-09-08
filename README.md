@@ -40,3 +40,28 @@
 **7. 废墟+盗墓** → 好友30天不登录，墓场变废墟，你可以去偷他的装饰品，成功率70%，失败会被诅咒（自己丢一件）。
 
 **8. 轮回转世** → 累计30份死亡报告后可转世，数据重置，保留部分装饰品，送你一块“轮回纪念碑”。
+
+---
+
+## 后端数据库配置
+
+数据库连接信息不保存在代码仓库中。启动后端前需要设置以下环境变量：
+
+| 环境变量 | 用途 |
+| --- | --- |
+| `DB_URL` | JDBC 数据库连接地址 |
+| `DB_USERNAME` | 数据库用户名 |
+| `DB_PASSWORD` | 数据库密码 |
+| `JPA_SHOW_SQL` | 是否打印 SQL，可选，默认 `false` |
+
+PowerShell 本地启动示例：
+
+```powershell
+$env:DB_URL="jdbc:mysql://localhost:3306/graveyard"
+$env:DB_USERNAME="your_username"
+$env:DB_PASSWORD="your_password"
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+不要将真实密码写入 `application.yaml`、`.env` 或提交到 Git 历史中。
