@@ -6,17 +6,20 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+@org.springframework.transaction.annotation.Transactional
 @RestController
 @RequestMapping("/api/v1/daily-data")
 public class DailyDataController {
+
+    @Autowired
+    private LevelRewardService levelRewards;
 
     @Autowired
     private DailyDataRepository dailyDataRepository;
 
     @Autowired
     private UserRepository userRepository;
-
-    // 提交每日数据
+// 提交每日数据
     @PostMapping("/submit")
     public Map<String, Object> submit(@RequestBody DailyData data) {
         Map<String, Object> response = new HashMap<>();
@@ -25,6 +28,7 @@ public class DailyDataController {
             data.setRecordDate(LocalDate.now());
         }
 
+        userRepository.findLockedById(data.getUserId()).orElseThrow();
         DailyData existing = dailyDataRepository
                 .findByUserIdAndRecordDate(data.getUserId(), data.getRecordDate())
                 .orElse(null);
@@ -39,19 +43,6 @@ public class DailyDataController {
             existing.setMomentsViewed(data.getMomentsViewed());
             dailyDataRepository.save(existing);
 
-            // 加经验
-            User user = userRepository.findById(data.getUserId()).orElse(null);
-            if (user != null) {
-                int oldLevel = user.getExperience() / 10 + 1;
-                user.setExperience(user.getExperience() + 3);
-                userRepository.save(user);
-                int newLevel = user.getExperience() / 10 + 1;
-                if (newLevel > oldLevel) {
-                    user.setHellMoney(user.getHellMoney() + 15);
-                    userRepository.save(user);
-                }
-            }
-
             response.put("success", true);
             response.put("message", "今日数据已更新 ⚰️");
             response.put("recordDate", existing.getRecordDate());
@@ -61,16 +52,11 @@ public class DailyDataController {
         dailyDataRepository.save(data);
 
         // 加经验
-        User user = userRepository.findById(data.getUserId()).orElse(null);
+        User user = userRepository.findLockedById(data.getUserId()).orElse(null);
         if (user != null) {
-            int oldLevel = user.getExperience() / 10 + 1;
             user.setExperience(user.getExperience() + 3);
             userRepository.save(user);
-            int newLevel = user.getExperience() / 10 + 1;
-            if (newLevel > oldLevel) {
-                user.setHellMoney(user.getHellMoney() + 15);
-                userRepository.save(user);
-            }
+            levelRewards.settle(user);
         }
 
         response.put("success", true);

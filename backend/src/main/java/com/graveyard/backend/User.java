@@ -38,6 +38,12 @@ public class User {
     @Column(name = "experience")
     private Integer experience = 0;
 
+    @Column(name = "rewarded_level")
+    private Integer rewardedLevel = 1;
+
+    public Integer getRewardedLevel() { return rewardedLevel; }
+    public void setRewardedLevel(Integer rewardedLevel) { this.rewardedLevel = rewardedLevel; }
+
     public User() {}
 
     public User(String username, String password, String email) {

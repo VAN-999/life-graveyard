@@ -12,6 +12,9 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private LevelRewardService levelRewards;
+
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
@@ -57,6 +60,7 @@ public class UserController {
             return response;
         }
 
+        user = levelRewards.sync(user.getId());
         int level = user.getExperience() / 10 + 1;
 
         response.put("success", true);
@@ -79,8 +83,9 @@ public class UserController {
             response.put("message", "用户不存在");
             return response;
         }
+        user = levelRewards.sync(user.getId());
         int level = user.getExperience() / 10 + 1;
-        int nextLevelExp = level * 10;
+        int nextLevelExp = 10;
         int currentExp = user.getExperience() % 10;
 
         Map<String, Object> data = new HashMap<>();
@@ -89,6 +94,7 @@ public class UserController {
         data.put("hellMoney", user.getHellMoney());
         data.put("level", level);
         data.put("experience", user.getExperience());
+        data.put("rewardedLevel", user.getRewardedLevel());
         data.put("currentLevelExp", currentExp);
         data.put("nextLevelExp", nextLevelExp);
 

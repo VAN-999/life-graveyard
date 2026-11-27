@@ -8,22 +8,25 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+@org.springframework.transaction.annotation.Transactional
 @RestController
 @RequestMapping("/api/v1/checkin")
 public class CheckinController {
+
+    @Autowired
+    private LevelRewardService levelRewards;
 
     @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private CheckinRepository checkinRepository;
-
-    // ====== 签到 ======
+// ====== 签到 ======
     @PostMapping("/do")
     public Map<String, Object> doCheckin(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
 
-        User user = userRepository.findById(userId).orElse(null);
+        User user = userRepository.findLockedById(userId).orElse(null);
         if (user == null) {
             response.put("success", false);
             response.put("message", "用户不存在");
@@ -62,10 +65,7 @@ public class CheckinController {
         int newLevel = user.getExperience() / 10 + 1;
 
         boolean levelUp = newLevel > oldLevel;
-        if (levelUp) {
-            user.setHellMoney(user.getHellMoney() + 15);
-            userRepository.save(user);
-        }
+        int levelReward = levelRewards.settle(user);
 
         response.put("success", true);
         response.put("message", "签到成功！获得了 " + reward + " 冥币 ⚰️");
@@ -76,7 +76,7 @@ public class CheckinController {
         response.put("level", newLevel);
         response.put("levelUp", levelUp);
         if (levelUp) {
-            response.put("levelUpMessage", "🎉 恭喜升级到 Lv." + newLevel + "！获得 15 冥币奖励！");
+            response.put("levelUpMessage", "🎉 恭喜升级到 Lv." + newLevel + "！升级奖励 " + levelReward + " 冥币已到账。");
         }
         return response;
     }

@@ -10,7 +10,7 @@
       <div class="flex items-center gap-6 text-sm">
         <span class="text-gray-400">🪙 冥币: <span class="text-yellow-400 font-bold">{{ user?.hellMoney || 0 }}</span></span>
         <div class="flex items-center gap-2">
-          <span class="text-gray-400 text-xs">Lv.{{ user?.level || 1 }}</span>
+          <button @click="showLevelRewards = true" class="text-gray-400 text-xs hover:text-white" aria-label="查看等级奖励">Lv.{{ user?.level || 1 }} 🎁</button>
           <div class="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
             <div class="h-full bg-yellow-400 rounded-full transition-all" :style="{ width: ((user?.currentLevelExp || 0) / (user?.nextLevelExp || 10) * 100) + '%' }"></div>
           </div>
@@ -565,6 +565,17 @@
     </section>
   </div>
 
+  <div v-if="showLevelRewards" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showLevelRewards = false">
+    <section class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md">
+      <div class="flex justify-between mb-4"><h2 class="text-xl">等级奖励</h2><button @click="showLevelRewards = false" aria-label="关闭等级奖励">✕</button></div>
+      <p>Lv.{{ user?.level || 1 }} · {{ user?.currentLevelExp || 0 }}/10 经验</p>
+      <p class="text-gray-400 text-sm mt-2">地下资历又深了一点。</p>
+      <div class="mt-4 p-3 bg-black/30 rounded"><p>每升一级 · 20 冥币</p><p class="text-sm text-gray-400">下一级 Lv.{{ (user?.level || 1) + 1 }}，奖励 {{ (user?.level || 1) + 1 === 5 ? 70 : 20 }} 冥币</p></div>
+      <div class="mt-3 p-3 bg-black/30 rounded"><p>Lv.5 · 额外 50 冥币</p><p class="text-sm text-gray-400">{{ (user?.rewardedLevel || 1) >= 5 ? '已到账' : '等你混到这一级。' }}</p></div>
+      <p v-if="(user?.rewardedLevel || 1) > 1" class="text-gray-400 text-sm mt-4">Lv.2—Lv.{{ user?.rewardedLevel || 1 }} 的升级奖励{{ (user?.rewardedLevel || 1) > 1 ? '已自动到账' : '尚未解锁' }}。</p>
+    </section>
+  </div>
+
   <!-- ====== 好友面板 ====== -->
   <div v-if="showFriendPanel" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showFriendPanel = false">
     <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -738,6 +749,7 @@ const decorationStates = ref([])
 const graveyardRef = ref(null)
 const selectedDecorationId = ref(null)
 
+const showLevelRewards = ref(false)
 const showShop = ref(false)
 const shopTab = ref('store')
 const decorations = ref([])

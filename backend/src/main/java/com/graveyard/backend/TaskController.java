@@ -5,9 +5,13 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.*;
 
+@org.springframework.transaction.annotation.Transactional
 @RestController
 @RequestMapping("/api/v1/tasks")
 public class TaskController {
+
+    @Autowired
+    private LevelRewardService levelRewards;
 
     @Autowired
     private TaskRepository taskRepository;
@@ -108,7 +112,7 @@ public class TaskController {
             return response;
         }
 
-        User user = userRepository.findById(userTask.getUserId()).orElse(null);
+        User user = userRepository.findLockedById(userTask.getUserId()).orElse(null);
         if (user == null) {
             response.put("success", false);
             response.put("message", "用户不存在");
@@ -116,18 +120,14 @@ public class TaskController {
         }
 
         user.setHellMoney(user.getHellMoney() + task.getRewardMoney());
-
-        // 加经验
+// 加经验
         int oldLevel = user.getExperience() / 10 + 1;
         user.setExperience(user.getExperience() + 5);
         userRepository.save(user);
         int newLevel = user.getExperience() / 10 + 1;
 
         boolean levelUp = newLevel > oldLevel;
-        if (levelUp) {
-            user.setHellMoney(user.getHellMoney() + 15);
-            userRepository.save(user);
-        }
+        int levelReward = levelRewards.settle(user);
 
         userTask.setIsClaimed(true);
         userTask.setClaimedAt(java.time.LocalDateTime.now());
@@ -141,7 +141,7 @@ public class TaskController {
         response.put("level", newLevel);
         response.put("levelUp", levelUp);
         if (levelUp) {
-            response.put("levelUpMessage", "🎉 恭喜升级到 Lv." + newLevel + "！获得 15 冥币奖励！");
+            response.put("levelUpMessage", "🎉 恭喜升级到 Lv." + newLevel + "！升级奖励 " + levelReward + " 冥币已到账。");
         }
         return response;
     }
