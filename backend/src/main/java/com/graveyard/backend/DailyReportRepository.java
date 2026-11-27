@@ -8,5 +8,7 @@ public interface DailyReportRepository extends JpaRepository<DailyReport, Long> 
 
     Optional<DailyReport> findByUserIdAndReportDate(Long userId, LocalDate reportDate);
 
+    Optional<DailyReport> findFirstByUserIdOrderByReportDateDesc(Long userId);
+
     boolean existsByUserIdAndReportDate(Long userId, LocalDate reportDate);
 }

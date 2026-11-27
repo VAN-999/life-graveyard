@@ -81,6 +81,10 @@
       </section>
 
       <aside class="w-64 flex flex-col gap-3 overflow-y-auto">
+        <div class="bg-black/40 border border-gray-800 rounded-xl p-4">
+          <h2 class="text-gray-400 text-xs mb-2">🪦 墓志铭</h2>
+          <p class="text-sm text-gray-200 whitespace-pre-wrap break-words">{{ epitaph }}</p>
+        </div>
         <div class="bg-black/40 border border-gray-800 rounded-xl p-4 backdrop-blur-sm flex-1">
           <div class="text-gray-400 text-xs uppercase tracking-widest mb-2">💀 今日死亡报告</div>
           <div class="flex items-center gap-3 mb-2">
@@ -528,6 +532,26 @@
         </article>
         <button v-if="giftHasMore" :disabled="giftMoreLoading" @click="loadMoreGifts" class="text-gray-400">{{ giftMoreLoading ? '加载中…' : '加载更早记录' }}</button>
       </div>
+    </section>
+  </div>
+
+  <div v-if="showVisit" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" @click.self="showVisit = false">
+    <section class="bg-gray-950 border border-gray-700 rounded-2xl p-4 w-full max-w-5xl max-h-[95vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg">{{ visitedGrave ? visitedGrave.username + ' 的墓园' : '参观墓园' }}</h2>
+        <button @click="showVisit = false; showFriendPanel = true" class="px-3 py-1 bg-gray-800 rounded">返回好友</button>
+      </div>
+      <p v-if="visitLoading" role="status" class="p-8 text-gray-400">正在找这座坟…</p>
+      <p v-else-if="visitError" role="alert" class="p-8 text-red-400">{{ visitError }}</p>
+      <template v-else-if="visitedGrave">
+        <div class="h-[55vh] min-h-72">
+          <Graveyard :key="visitOwnerId" :username="visitedGrave.username" :equippedDecorations="visitedGrave.decorations" :decorationStates="visitedGrave.states" :tombstoneStyle="visitedGrave.tombstoneStyle" :readonly="true" effect="all" />
+        </div>
+        <div class="mt-4 p-4 bg-black/40 border border-gray-800 rounded-xl">
+          <h3 class="text-sm text-gray-400 mb-2">🪦 墓志铭</h3>
+          <p class="whitespace-pre-wrap break-words">{{ visitedGrave.epitaph }}</p>
+        </div>
+      </template>
     </section>
   </div>
 
@@ -1160,9 +1184,31 @@ const deleteFriend = async (friendId) => {
   }
 }
 
-const visitGrave = (friendId) => {
-  // TODO: 查看好友墓场
-  alert('🚧 查看好友墓场功能开发中...')
+const showVisit = ref(false)
+const visitLoading = ref(false)
+const visitError = ref('')
+const visitedGrave = ref(null)
+const visitOwnerId = ref(null)
+let visitRequest = 0
+
+const visitGrave = async (friendId) => {
+  const request = ++visitRequest
+  showFriendPanel.value = false
+  showVisit.value = true
+  visitLoading.value = true
+  visitError.value = ''
+  visitedGrave.value = null
+  visitOwnerId.value = friendId
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/graves/${friendId}`, { params: { visitorId: user.value.id } })
+    if (request !== visitRequest) return
+    if (!res.data.success) throw new Error(res.data.message)
+    visitedGrave.value = res.data.data
+  } catch (error) {
+    if (request === visitRequest) visitError.value = error.response?.data?.message || error.message || '这座坟暂时连不上，稍后再来。'
+  } finally {
+    if (request === visitRequest) visitLoading.value = false
+  }
 }
 
 // ====== 签到 ======

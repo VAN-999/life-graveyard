@@ -24,7 +24,7 @@
         top: deco.y + '%',
         transform: `translate(-50%, -50%) rotate(${deco.rotation || 0}deg) scale(${deco.scale || 1})`,
         zIndex: deco.zIndex || 0,
-        cursor: 'grab',
+        cursor: readonly ? 'default' : 'grab',
         border: selectedId === deco.id ? '2px solid #ff4444' : 'none',
         borderRadius: '4px',
         padding: '2px'
@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import bgImage from '../assets/cemetery-bg.jpg'
 import shadowImage from '../assets/tombstone-shadow.png'
 import tombstoneDefault from '../assets/tombstone.png'
@@ -50,6 +50,7 @@ import tombstoneAncient from '../assets/tombstone-ancient.png'
 
 const props = defineProps({
   username: { type: String, default: '安息于此' },
+  readonly: { type: Boolean, default: false },
   equippedDecorations: { type: Array, default: () => [] },
   decorationStates: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
@@ -130,7 +131,7 @@ const mergeDecorations = () => {
 let dragData = null
 
 const startDrag = (event, deco) => {
-  if (event.button !== 0) return
+  if (props.readonly || event.button !== 0) return
   event.preventDefault()
 
   const rect = canvasRef.value.getBoundingClientRect()
@@ -165,7 +166,7 @@ const stopDrag = () => {
 }
 
 const selectDecoration = (id) => {
-  emit('select-decoration', id)
+  if (!props.readonly) emit('select-decoration', id)
 }
 
 const generateStars = () => {
@@ -185,6 +186,8 @@ const generateStars = () => {
 
 let fireflyAnimationId = null
 let snowAnimationId = null
+let effectInitTimer = null
+const resizeHandlers = []
 
 const initFireflies = () => {
   const canvas = fireflyCanvas.value
@@ -244,11 +247,13 @@ const initFireflies = () => {
 
   drawFireflies()
 
-  window.addEventListener('resize', () => {
+  const resize = () => {
     const rect = canvas.parentElement.getBoundingClientRect()
     canvas.width = rect.width
     canvas.height = rect.height
-  })
+  }
+  resizeHandlers.push(resize)
+  window.addEventListener('resize', resize)
 }
 
 const initSnow = () => {
@@ -303,20 +308,30 @@ const initSnow = () => {
 
   drawSnow()
 
-  window.addEventListener('resize', () => {
+  const resize = () => {
     const rect = canvas.parentElement.getBoundingClientRect()
     canvas.width = rect.width
     canvas.height = rect.height
-  })
+  }
+  resizeHandlers.push(resize)
+  window.addEventListener('resize', resize)
 }
 
 onMounted(() => {
   generateStars()
   mergeDecorations()
-  setTimeout(() => {
+  effectInitTimer = setTimeout(() => {
     initFireflies()
     initSnow()
   }, 100)
+})
+
+onUnmounted(() => {
+  clearTimeout(effectInitTimer)
+  cancelAnimationFrame(fireflyAnimationId)
+  cancelAnimationFrame(snowAnimationId)
+  stopDrag()
+  resizeHandlers.forEach(handler => window.removeEventListener('resize', handler))
 })
 
 defineExpose({
