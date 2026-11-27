@@ -4,9 +4,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface RobberyLogRepository extends JpaRepository<RobberyLog, Long> {
+
+    List<RobberyLog> findByRobberIdOrVictimIdOrderByCreatedAtDescIdDesc(Long robberId, Long victimId);
+
+    boolean existsByRobberIdAndVictimIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Long robberId, Long victimId, LocalDateTime start, LocalDateTime end);
 
     // 查询今天某用户是否偷过某好友
     @Query("SELECT COUNT(r) > 0 FROM RobberyLog r WHERE r.robberId = :robberId AND r.victimId = :victimId AND DATE(r.createdAt) = :today")

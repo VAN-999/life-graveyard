@@ -5,7 +5,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
+import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -268,18 +271,21 @@ public class DecorationController {
     @GetMapping("/robbery-logs")
     public Map<String, Object> getRobberyLogs(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
-        List<RobberyLog> logs = robberyLogRepository.findByRobberIdOrderByCreatedAtDesc(userId);
+        List<RobberyLog> logs = robberyLogRepository.findByRobberIdOrVictimIdOrderByCreatedAtDescIdDesc(userId, userId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (RobberyLog log : logs) {
             Map<String, Object> item = new HashMap<>();
             item.put("id", log.getId());
             User victim = userRepository.findById(log.getVictimId()).orElse(null);
-            item.put("victimName", victim != null ? victim.getUsername() : "未知");
+            item.put("victimName", victim != null ? victim.getUsername() : "已注销用户");
+            User robber = userRepository.findById(log.getRobberId()).orElse(null);
+            item.put("robberName", robber != null ? robber.getUsername() : "已注销用户");
+            item.put("direction", userId.equals(log.getRobberId()) ? "OUTGOING" : "INCOMING");
             item.put("decorationName", log.getDecorationName());
             item.put("success", log.getSuccess());
             item.put("penaltyType", log.getPenaltyType());
             item.put("penaltyAmount", log.getPenaltyAmount());
-            item.put("createdAt", log.getCreatedAt());
+            item.put("createdAt", log.getCreatedAt().atOffset(ZoneOffset.UTC));
             result.add(item);
         }
         response.put("success", true);
@@ -287,120 +293,80 @@ public class DecorationController {
         return response;
     }
 
-    // ====== 盗墓（简化版） ======
+    // Lock both players in ID order so simultaneous attempts cannot bypass the daily limit.
     @PostMapping("/rob")
     @Transactional
     public Map<String, Object> rob(@RequestParam Long robberId, @RequestParam Long victimId) {
         Map<String, Object> response = new HashMap<>();
-
+        response.put("success", false);
         if (robberId.equals(victimId)) {
-            response.put("success", false);
-            response.put("message", "不能偷自己 💀");
+            response.put("message", "不能偷自己的墓园");
             return response;
         }
 
-        String sql = "SELECT * FROM user_decorations WHERE user_id = ?";
-        Query query = entityManager.createNativeQuery(sql, UserDecoration.class);
-        query.setParameter(1, victimId);
-        List<UserDecoration> allDecos = query.getResultList();
+        User first = entityManager.find(User.class, Math.min(robberId, victimId), LockModeType.PESSIMISTIC_WRITE);
+        User second = entityManager.find(User.class, Math.max(robberId, victimId), LockModeType.PESSIMISTIC_WRITE);
+        if (first == null || second == null) {
+            response.put("message", "用户不存在");
+            return response;
+        }
+        if (!friendRepository.isFriend(robberId, victimId)) {
+            response.put("message", "只能对好友发起盗墓");
+            return response;
+        }
 
-        System.out.println("🔥🔥🔥 查询结果数量: " + allDecos.size());
+        // Existing timestamps were written in Railway's UTC timezone.
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+        LocalDateTime start = today.atStartOfDay(ZoneId.of("Asia/Shanghai"))
+                .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        if (robberyLogRepository.existsByRobberIdAndVictimIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                robberId, victimId, start, start.plusDays(1))) {
+            response.put("message", "今天已经去过这位好友的墓园了，明天再来");
+            return response;
+        }
 
-        if (allDecos.isEmpty()) {
-            response.put("success", false);
-            response.put("message", "墓场太寒酸了，没什么好偷的 💀");
+        List<UserDecoration> ownItems = userDecorationRepository.findByUserId(robberId);
+        if (ownItems.isEmpty()) {
+            response.put("message", "先有一件装饰品才能盗墓");
+            return response;
+        }
+        List<UserDecoration> friendItems = userDecorationRepository.findByUserId(victimId);
+        if (friendItems.isEmpty()) {
+            response.put("message", "好友没有装饰品可以偷");
             return response;
         }
 
         Random random = new Random();
-        int targetIndex = random.nextInt(allDecos.size());
-        UserDecoration target = allDecos.get(targetIndex);
-        Decoration targetDeco = decorationRepository.findById(target.getDecorationId()).orElse(null);
-
-        if (targetDeco == null) {
-            response.put("success", false);
-            response.put("message", "装饰品不存在");
+        boolean won = random.nextDouble() < 0.7;
+        List<UserDecoration> candidates = won ? friendItems : ownItems;
+        UserDecoration item = candidates.get(random.nextInt(candidates.size()));
+        // Refresh and lock the item in case another inventory operation changed it.
+        entityManager.refresh(item, LockModeType.PESSIMISTIC_WRITE);
+        Long expectedOwner = won ? victimId : robberId;
+        if (!expectedOwner.equals(item.getUserId())) {
+            response.put("message", "装饰品归属已变化，请重试");
             return response;
         }
+        Decoration decoration = decorationRepository.findById(item.getDecorationId()).orElseThrow();
+        Long recipientId = won ? robberId : victimId;
 
-        boolean success = random.nextDouble() < 0.7;
+        decorationStateRepository.deleteByUserDecorationId(item.getId());
+        decorationStateRepository.flush();
+        item.setUserId(recipientId);
+        item.setIsEquipped(false);
+        userDecorationRepository.save(item);
+        decorationStateRepository.save(new DecorationState(recipientId, item.getId()));
 
-        if (success) {
-            userDecorationRepository.deleteById(target.getId());
-            decorationStateRepository.deleteByUserDecorationId(target.getId());
-
-            UserDecoration newDeco = new UserDecoration(robberId, targetDeco.getId());
-            userDecorationRepository.save(newDeco);
-            DecorationState state = new DecorationState(robberId, newDeco.getId());
-            decorationStateRepository.save(state);
-
-            RobberyLog log = new RobberyLog(robberId, victimId, targetDeco.getId(), targetDeco.getName(), true, null, 0);
-            robberyLogRepository.save(log);
-
-            response.put("success", true);
-            response.put("robbed", true);
-            response.put("message", "盗墓成功！你偷到了 " + targetDeco.getName() + " ⚰️");
-            response.put("decorationName", targetDeco.getName());
-            response.put("decorationIcon", targetDeco.getIcon());
-            return response;
-        }
-
-        // 失败惩罚
-        int penalty = (int) Math.round(targetDeco.getPrice() * 0.4);
-        if (penalty < 1) penalty = 1;
-
-        User robber = userRepository.findById(robberId).orElse(null);
-        if (robber == null) {
-            response.put("success", false);
-            response.put("message", "用户不存在");
-            return response;
-        }
-
-        List<UserDecoration> robberDecos = userDecorationRepository.findByUserId(robberId);
-
-        if (!robberDecos.isEmpty()) {
-            int idx = random.nextInt(robberDecos.size());
-            UserDecoration toRemove = robberDecos.get(idx);
-            Decoration removedDeco = decorationRepository.findById(toRemove.getDecorationId()).orElse(null);
-            String removedName = removedDeco != null ? removedDeco.getName() : "装饰品";
-
-            userDecorationRepository.deleteById(toRemove.getId());
-            decorationStateRepository.deleteByUserDecorationId(toRemove.getId());
-
-            RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, "LOST_DECORATION", 0);
-            robberyLogRepository.save(log);
-
-            response.put("success", true);
-            response.put("robbed", false);
-            response.put("message", "墓场诅咒！你丢失了 " + removedName + " ☠️");
-            response.put("penaltyType", "LOST_DECORATION");
-            response.put("lostDecoration", removedName);
-            return response;
-        }
-
-        if (robber.getHellMoney() >= penalty) {
-            robber.setHellMoney(robber.getHellMoney() - penalty);
-            userRepository.save(robber);
-
-            RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, "LOST_MONEY", penalty);
-            robberyLogRepository.save(log);
-
-            response.put("success", true);
-            response.put("robbed", false);
-            response.put("message", "墓场诅咒！你被扣除了 " + penalty + " 冥币 ☠️");
-            response.put("penaltyType", "LOST_MONEY");
-            response.put("penaltyAmount", penalty);
-            return response;
-        }
-
-        RobberyLog log = new RobberyLog(robberId, victimId, null, null, false, "POOR_EXEMPT", 0);
+        RobberyLog log = new RobberyLog(robberId, victimId, decoration.getId(),
+                decoration.getName(), won, won ? null : "GIFT_DECORATION", 0);
         robberyLogRepository.save(log);
 
         response.put("success", true);
-        response.put("robbed", false);
-        response.put("message", "你穷得连诅咒都懒得理你，今天盗墓功能已锁定，明天再来吧。");
-        response.put("penaltyType", "POOR_EXEMPT");
-        response.put("poorExempt", true);
+        response.put("robbed", won);
+        response.put("decorationName", decoration.getName());
+        response.put("message", won
+                ? "偷到了「" + decoration.getName() + "」，今天就到这里"
+                : "被发现了，你的「" + decoration.getName() + "」留给了对方");
         return response;
     }
 }

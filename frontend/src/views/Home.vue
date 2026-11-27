@@ -469,15 +469,17 @@
       >
         <div class="flex flex-col">
         <span class="text-white text-sm">
-          {{ log.success ? '✅ 偷到了' : '❌ 失败了' }}
-          <span v-if="log.success">{{ log.decorationName }}</span>
-          <span v-else>
-            {{ log.penaltyType === 'LOST_MONEY' ? '扣了 ' + log.penaltyAmount + ' 冥币' : '' }}
-            {{ log.penaltyType === 'LOST_DECORATION' ? '丢了装饰品' : '' }}
-            {{ log.penaltyType === 'POOR_EXEMPT' ? '穷鬼豁免' : '' }}
-          </span>
+          {{ log.direction === 'INCOMING' ? log.robberName + ' 来偷你的墓园' : '你去偷了 ' + log.victimName }}
         </span>
-          <span class="text-gray-500 text-xs">目标：{{ log.victimName }}</span>
+          <span class="text-gray-300 text-sm">
+            {{ log.success ? '得手了' : '被发现了' }}
+            <template v-if="log.success || log.penaltyType === 'GIFT_DECORATION'">
+              · 「{{ log.decorationName || '装饰品' }}」归 {{ log.success ? log.robberName : log.victimName }}
+            </template>
+            <template v-else-if="log.penaltyType === 'LOST_MONEY'"> · 扣除 {{ log.penaltyAmount }} 冥币（旧记录）</template>
+            <template v-else-if="log.penaltyType === 'LOST_DECORATION'"> · 丢失装饰品（旧记录）</template>
+            <template v-else-if="log.penaltyType === 'POOR_EXEMPT'"> · 免除惩罚（旧记录）</template>
+          </span>
         </div>
         <span class="text-gray-600 text-xs">{{ new Date(log.createdAt).toLocaleString() }}</span>
       </div>
@@ -734,7 +736,7 @@ const getStyleKey = (name) => {
 
 const robFriend = async (friendId) => {
   if (!user.value) return
-  if (!confirm(`确定要盗墓「${friendId}」的墓场吗？成功率 70%，失败有惩罚 💀`)) return
+  if (!confirm(`每天只能对每位好友尝试一次。成功率 70%；失败会把自己的一件装饰品送给对方。继续吗？`)) return
 
   try {
     const res = await axios.post(`${API_BASE}/api/v1/decorations/rob?robberId=${user.value.id}&victimId=${friendId}`)

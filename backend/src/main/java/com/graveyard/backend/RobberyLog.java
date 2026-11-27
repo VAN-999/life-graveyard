@@ -36,7 +36,7 @@ public class RobberyLog {
     private LocalDateTime createdAt;
 
     public RobberyLog() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(java.time.ZoneOffset.UTC);
     }
 
     public RobberyLog(Long robberId, Long victimId, Long decorationId, String decorationName, Boolean success, String penaltyType, Integer penaltyAmount) {
@@ -47,7 +47,7 @@ public class RobberyLog {
         this.success = success;
         this.penaltyType = penaltyType;
         this.penaltyAmount = penaltyAmount;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(java.time.ZoneOffset.UTC);
     }
 
     // Getter & Setter
