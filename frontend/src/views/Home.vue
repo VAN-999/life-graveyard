@@ -493,10 +493,10 @@
         <h3 class="text-xl font-bold text-white">👥 好友</h3>
         <div class="flex gap-2">
           <button
-              @click="showRobberyLogs = true; loadRobberyLogs()"
+              @click="showFriendPanel = false; showRobberyLogs = true; loadRobberyLogs()"
               class="px-3 py-1 rounded-lg text-sm transition bg-gray-800 text-gray-400 hover:bg-gray-700"
           >
-            📜 日志
+            盗墓记录
           </button>
           <button @click="showFriendPanel = false" class="text-gray-400 hover:text-white text-xl">✕</button>
         </div>
