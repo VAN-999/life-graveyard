@@ -272,13 +272,22 @@ public class DecorationController {
     public Map<String, Object> getRobberyLogs(@RequestParam Long userId) {
         Map<String, Object> response = new HashMap<>();
         List<RobberyLog> logs = robberyLogRepository.findByRobberIdOrVictimIdOrderByCreatedAtDescIdDesc(userId, userId);
+        Set<Long> playerIds = new HashSet<>();
+        for (RobberyLog log : logs) {
+            playerIds.add(log.getRobberId());
+            playerIds.add(log.getVictimId());
+        }
+        Map<Long, User> players = new HashMap<>();
+        for (User player : userRepository.findAllById(playerIds)) {
+            players.put(player.getId(), player);
+        }
         List<Map<String, Object>> result = new ArrayList<>();
         for (RobberyLog log : logs) {
             Map<String, Object> item = new HashMap<>();
             item.put("id", log.getId());
-            User victim = userRepository.findById(log.getVictimId()).orElse(null);
+            User victim = players.get(log.getVictimId());
             item.put("victimName", victim != null ? victim.getUsername() : "已注销用户");
-            User robber = userRepository.findById(log.getRobberId()).orElse(null);
+            User robber = players.get(log.getRobberId());
             item.put("robberName", robber != null ? robber.getUsername() : "已注销用户");
             item.put("direction", userId.equals(log.getRobberId()) ? "OUTGOING" : "INCOMING");
             item.put("decorationName", log.getDecorationName());
