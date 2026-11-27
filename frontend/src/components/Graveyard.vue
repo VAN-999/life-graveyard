@@ -1,6 +1,6 @@
 <template>
   <div class="cemetery-canvas" ref="canvasRef">
-    <img :src="bgImage" class="bg-image" alt="墓园背景" />
+    <img :src="bgImage" class="bg-image" alt="墓园背景" draggable="false" />
     <div class="star-container" ref="starContainer"></div>
 
     <canvas ref="fireflyCanvas" class="effect-canvas" v-show="showFireflies"></canvas>
@@ -16,15 +16,17 @@
     </div>
 
     <div
-        v-for="deco in editableDecorations"
+        v-for="deco in editableDecorations.filter(item => item.isVisible !== false)"
         :key="deco.userDecorationId"
         class="decor-item"
         :style="{
         left: deco.x + '%',
         top: deco.y + '%',
         transform: `translate(-50%, -50%) rotate(${deco.rotation || 0}deg) scale(${deco.scale || 1})`,
-        zIndex: deco.zIndex || 0,
+        zIndex: selectedId === deco.id ? 120 : 10 + Math.max(0, Math.min(100, deco.zIndex || 0)),
         cursor: readonly ? 'default' : 'grab',
+        minWidth: '48px',
+        minHeight: '48px',
         border: selectedId === deco.id ? '2px solid #ff4444' : 'none',
         borderRadius: '4px',
         padding: '2px'
@@ -116,8 +118,8 @@ const mergeDecorations = () => {
     }
     return {
       ...deco,
-      x: state?.x ?? (50 + (Math.random() - 0.5) * 30),
-      y: state?.y ?? (50 + (Math.random() - 0.5) * 30),
+      x: state?.x ?? 28,
+      y: state?.y ?? 70,
       rotation: state?.rotation ?? 0,
       scale: state?.scale ?? 1,
       zIndex: state?.zIndex ?? 0,
@@ -133,6 +135,7 @@ let dragData = null
 const startDrag = (event, deco) => {
   if (props.readonly || event.button !== 0) return
   event.preventDefault()
+  emit('select-decoration', deco.id)
 
   const rect = canvasRef.value.getBoundingClientRect()
   dragData = {
@@ -357,6 +360,7 @@ defineExpose({
   object-fit: cover;
   object-position: center 30%;
   z-index: 0;
+  pointer-events: none;
 }
 
 .star-container {
@@ -392,6 +396,7 @@ defineExpose({
   right: 18%;
   bottom: 18%;
   z-index: 3;
+  pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;

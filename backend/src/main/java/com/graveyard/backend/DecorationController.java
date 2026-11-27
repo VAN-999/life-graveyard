@@ -127,6 +127,7 @@ public class DecorationController {
     }
 
     @PostMapping("/equip")
+    @Transactional
     public Map<String, Object> equip(@RequestParam Long userDecorationId) {
         Map<String, Object> response = new HashMap<>();
         UserDecoration ud = userDecorationRepository.findById(userDecorationId).orElse(null);
@@ -143,6 +144,9 @@ public class DecorationController {
         }
         ud.setIsEquipped(true);
         userDecorationRepository.save(ud);
+        if (decorationStateRepository.findByUserDecorationId(ud.getId()).isEmpty()) {
+            decorationStateRepository.save(new DecorationState(ud.getUserId(), ud.getId()));
+        }
         response.put("success", true);
         response.put("message", "已装备 " + d.getName() + " ⚰️");
         return response;

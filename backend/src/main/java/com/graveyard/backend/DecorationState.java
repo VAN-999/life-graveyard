@@ -18,10 +18,10 @@ public class DecorationState {
     private Long userDecorationId;
 
     @Column(name = "x")
-    private Double x = 50.0;
+    private Double x = 28.0;
 
     @Column(name = "y")
-    private Double y = 50.0;
+    private Double y = 70.0;
 
     @Column(name = "rotation")
     private Double rotation = 0.0;
@@ -41,8 +41,8 @@ public class DecorationState {
     public DecorationState(Long userId, Long userDecorationId) {
         this.userId = userId;
         this.userDecorationId = userDecorationId;
-        this.x = 50.0 + (Math.random() - 0.5) * 30;
-        this.y = 50.0 + (Math.random() - 0.5) * 30;
+        this.x = 28.0;
+        this.y = 70.0;
         this.rotation = 0.0;
         this.scale = 1.0;
         this.zIndex = 0;

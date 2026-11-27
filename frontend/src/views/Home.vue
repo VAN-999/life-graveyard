@@ -68,7 +68,17 @@
             @select-decoration="onSelectDecoration"
         />
 
+        <div v-if="equippedDecorations.length" @click.stop class="absolute top-3 left-3 z-20 max-w-[45%]">
+          <details class="bg-black/80 border border-gray-700 rounded-lg p-2">
+            <summary class="cursor-pointer text-sm">已摆放（{{ equippedDecorations.length }}）</summary>
+            <div class="max-h-48 overflow-y-auto mt-2 flex flex-col gap-1">
+              <button v-for="item in equippedDecorations" :key="item.id" @click="onSelectDecoration(item.id)" class="text-left text-sm px-2 py-1 rounded" :class="selectedDecorationId === item.id ? 'bg-red-800' : 'hover:bg-gray-700'">{{ item.name }} #{{ item.id }}</button>
+            </div>
+          </details>
+        </div>
+
         <div v-if="selectedDecorationId" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-2 bg-black/70 border border-gray-700 rounded-xl p-2 backdrop-blur-sm">
+          <button @click.stop="resetDecorationPosition" class="px-3 py-1 bg-gray-700 rounded-lg text-sm">找回位置</button>
           <button @click.stop="rotateDecoration(-15)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">↺ -15°</button>
           <button @click.stop="rotateDecoration(15)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">↻ +15°</button>
           <button @click.stop="scaleDecoration(0.9)" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">🔍−</button>
@@ -1395,10 +1405,11 @@ const equipDecoration = async (userDecorationId) => {
   try {
     const res = await axios.post(`${API_BASE}/api/v1/decorations/equip?userDecorationId=${userDecorationId}`)
     if (res.data.success) {
-      alert(`✅ ${res.data.message}`)
       await loadMyDecorations()
       await loadDecorations()
       await loadDecorationStates()
+      selectedDecorationId.value = userDecorationId
+      showShop.value = false
     } else {
       alert(`❌ ${res.data.message}`)
     }
@@ -1454,6 +1465,14 @@ const onUpdateState = (deco) => {
     state.x = deco.x
     state.y = deco.y
   }
+}
+
+const resetDecorationPosition = () => {
+  const deco = graveyardRef.value?.editableDecorations?.find(d => d.id === selectedDecorationId.value)
+  if (!deco) return
+  deco.x = 28
+  deco.y = 70
+  updateState(deco)
 }
 
 const rotateDecoration = (angle) => {
