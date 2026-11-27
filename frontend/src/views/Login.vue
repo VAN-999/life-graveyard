@@ -36,12 +36,12 @@
 
         <button @click="handleLogin" :disabled="loading"
                 class="w-full bg-white/10 hover:bg-white/20 border border-gray-600 text-white font-medium py-3 rounded-lg transition duration-200 hover:shadow-lg hover:shadow-white/5 disabled:opacity-50 disabled:cursor-not-allowed">
-          {{ loading ? '⏳ 验尸中...' : '进入墓场 ⚰️' }}
+          {{ loading ? '⏳ 验尸中...' : '⚰️ 开棺' }}
         </button>
 
         <p class="text-center text-gray-500 text-sm mt-4">
           还没有墓位？
-          <a href="#" @click.prevent="showRegister = true" class="text-gray-300 hover:text-white transition">立即安葬</a>
+          <a href="#" @click.prevent="showRegister = true" class="text-gray-300 hover:text-white transition">🪦 申请墓位</a>
         </p>
       </div>
 
@@ -135,7 +135,7 @@ const handleLogin = async () => {
       errorMsg.value = response.data.message
     }
   } catch (error) {
-    errorMsg.value = '服务器连接失败，墓场暂时关闭 ☠️'
+    errorMsg.value = '📡 阴间断网，托梦也没用。稍后再试。'
   } finally {
     loading.value = false
   }

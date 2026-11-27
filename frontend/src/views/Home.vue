@@ -460,7 +460,7 @@
         <button @click="showRobberyLogs = false" class="text-gray-400 hover:text-white text-xl">✕</button>
       </div>
       <div v-if="robberyLogs.length === 0" class="text-center text-gray-500 py-8">
-        还没有盗墓记录 💀
+        暂无案底。继续保持，或者别保持。
       </div>
       <div
           v-for="log in robberyLogs"
@@ -563,6 +563,7 @@
 
       <!-- 好友请求 -->
       <div v-if="friendTab === 'requests'">
+        <p v-if="friendRequests.length > 0" class="text-gray-400 text-sm mb-3">有人想跟你做邻坟。🪦</p>
         <div v-if="friendRequests.length === 0" class="text-center text-gray-500 py-8">
           没有好友请求 💀
         </div>

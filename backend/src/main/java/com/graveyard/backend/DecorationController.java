@@ -330,18 +330,18 @@ public class DecorationController {
                 .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         if (robberyLogRepository.existsByRobberIdAndVictimIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                 robberId, victimId, start, start.plusDays(1))) {
-            response.put("message", "今天已经去过这位好友的墓园了，明天再来");
+            response.put("message", "同一座坟一天只刨一次，给死者一点隐私。");
             return response;
         }
 
         List<UserDecoration> ownItems = userDecorationRepository.findByUserId(robberId);
         if (ownItems.isEmpty()) {
-            response.put("message", "先有一件装饰品才能盗墓");
+            response.put("message", "你比墓还干净，拿什么赔？");
             return response;
         }
         List<UserDecoration> friendItems = userDecorationRepository.findByUserId(victimId);
         if (friendItems.isEmpty()) {
-            response.put("message", "好友没有装饰品可以偷");
+            response.put("message", "进去看了，耗子都留了两粒米。🐀");
             return response;
         }
 
@@ -374,8 +374,8 @@ public class DecorationController {
         response.put("robbed", won);
         response.put("decorationName", decoration.getName());
         response.put("message", won
-                ? "偷到了「" + decoration.getName() + "」，今天就到这里"
-                : "被发现了，你的「" + decoration.getName() + "」留给了对方");
+                ? "「" + decoration.getName() + "」已过户。原主人暂未发表遗言。🥀"
+                : "被抓现行。「" + decoration.getName() + "」赔给对方，你获准保留全尸。");
         return response;
     }
 }

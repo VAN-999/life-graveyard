@@ -47,13 +47,13 @@ public class UserController {
 
         if (user == null) {
             response.put("success", false);
-            response.put("message", "用户不存在，要不要先注册一个？⚰️");
+            response.put("message", "查无此坟。建议先死后入驻。");
             return response;
         }
 
         if (!user.getPassword().equals(password)) {
             response.put("success", false);
-            response.put("message", "密码错误，你是来盗墓的吗？");
+            response.put("message", "棺材是你的，钥匙不对。");
             return response;
         }
 
