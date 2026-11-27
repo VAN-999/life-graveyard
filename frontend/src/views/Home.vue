@@ -25,6 +25,7 @@
         <button @click="showShop = true" class="text-gray-300 hover:text-white transition text-sm">
           🛒 商店
         </button>
+        <button @click="openGifts" class="text-gray-300 hover:text-white transition text-sm">🎁 赠礼</button>
         <button @click="showFriendPanel = true" class="text-gray-300 hover:text-white transition text-sm">
           👥 好友
         </button>
@@ -486,6 +487,50 @@
     </div>
   </div>
 
+  <div v-if="showGifts" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showGifts = false">
+    <section class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between mb-4"><h2 class="text-xl">🎁 赠礼</h2><button aria-label="关闭赠礼" @click="showGifts = false">✕</button></div>
+      <div class="flex gap-3 mb-4">
+        <button v-for="tab in ['SEND', 'RECEIVED', 'SENT']" :key="tab" @click="giftTab = tab" :class="giftTab === tab ? 'text-white border-b border-white' : 'text-gray-500'">{{ { SEND: '送礼物', RECEIVED: '收到的', SENT: '送出的' }[tab] }}</button>
+      </div>
+      <p v-if="giftError" role="alert" class="text-red-400 mb-3">{{ giftError }}</p>
+      <p v-if="giftNotice" role="status" class="text-green-400 mb-3">{{ giftNotice }}</p>
+      <p v-if="giftLoading" class="text-gray-400">正在翻记录…</p>
+      <form v-else-if="giftTab === 'SEND'" @submit.prevent="sendGift" class="space-y-4">
+        <label class="block">送给谁
+          <select v-model="giftRecipient" required :disabled="giftSending" class="block w-full mt-2 p-2 bg-gray-800 rounded">
+            <option value="" disabled>选一位邻坟</option>
+            <option v-for="friend in friends" :key="friend.id" :value="friend.id">{{ friend.username }}</option>
+          </select>
+        </label>
+        <label class="block">送什么
+          <select v-model="giftItem" required :disabled="giftSending" class="block w-full mt-2 p-2 bg-gray-800 rounded">
+            <option value="" disabled>选一件自己的装饰品</option>
+            <option v-for="item in myDecorations" :key="item.id" :value="item.id">{{ item.name }}{{ item.isEquipped ? '（已摆放）' : '' }}</option>
+          </select>
+        </label>
+        <p v-if="!friends.length" class="text-gray-400">先加位好友，才有地方送。</p>
+        <p v-if="!myDecorations.length" class="text-gray-400">背包空了，先去商店置办点东西。</p>
+        <label class="block">留句话
+          <textarea v-model="giftMessage" maxlength="200" :disabled="giftSending" rows="3" class="block w-full mt-2 p-2 bg-gray-800 rounded" placeholder="有什么话，趁对方还能看见。"></textarea>
+        </label>
+        <p class="text-gray-500 text-sm">{{ giftMessage.length }}/200 · 送出后物品归对方，已摆放的也会移走。</p>
+        <button :disabled="giftSending || !giftItem || !giftRecipient" class="px-4 py-2 bg-red-800 rounded disabled:opacity-40">{{ giftSending ? '正在送出…' : '确认赠送' }}</button>
+      </form>
+      <div v-else class="space-y-3">
+        <p v-if="!giftRecords.some(g => g.direction === giftTab)" class="text-gray-500">这一页暂时没有记录。</p>
+        <article v-for="gift in giftRecords.filter(g => g.direction === giftTab)" :key="gift.id" class="bg-black/30 p-3 rounded">
+          <p>{{ gift.senderName }} → {{ gift.recipientName }}</p>
+          <p class="text-gray-300 mt-1">「{{ gift.decorationName }}」</p>
+          <p v-if="gift.direction === 'RECEIVED'" class="text-gray-400 text-sm">对方说你应该用得上。🎁</p>
+          <p v-if="gift.message" class="whitespace-pre-wrap break-words mt-2">{{ gift.message }}</p>
+          <time class="text-gray-500 text-xs">{{ new Date(gift.createdAt).toLocaleString() }}</time>
+        </article>
+        <button v-if="giftHasMore" :disabled="giftMoreLoading" @click="loadMoreGifts" class="text-gray-400">{{ giftMoreLoading ? '加载中…' : '加载更早记录' }}</button>
+      </div>
+    </section>
+  </div>
+
   <!-- ====== 好友面板 ====== -->
   <div v-if="showFriendPanel" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showFriendPanel = false">
     <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -935,6 +980,87 @@ const loadData = async () => {
     if (missing.length > 0) {
       await loadDecorationStates()
     }
+  }
+}
+
+
+const showGifts = ref(false)
+const giftTab = ref('SEND')
+const giftRecipient = ref('')
+const giftItem = ref('')
+const giftMessage = ref('')
+const giftRecords = ref([])
+const giftPage = ref(0)
+const giftHasMore = ref(false)
+const giftLoading = ref(false)
+const giftMoreLoading = ref(false)
+const giftSending = ref(false)
+const giftError = ref('')
+const giftNotice = ref('')
+let giftRetry = null
+
+const fetchGifts = async (page = 0) => {
+  const res = await axios.get(`${API_BASE}/api/v1/gifts`, { params: { userId: user.value.id, page } })
+  if (!res.data.success) throw new Error(res.data.message)
+  giftRecords.value = page === 0 ? res.data.data : [...giftRecords.value, ...res.data.data]
+  giftPage.value = page
+  giftHasMore.value = res.data.hasMore
+}
+
+const openGifts = async () => {
+  showGifts.value = true
+  giftError.value = ''
+  giftNotice.value = ''
+  giftLoading.value = true
+  try {
+    await Promise.all([loadFriends(), loadMyDecorations(), fetchGifts()])
+  } catch {
+    giftError.value = '暂时没取到赠礼记录，关掉再试一下。'
+  } finally {
+    giftLoading.value = false
+  }
+}
+
+const loadMoreGifts = async () => {
+  giftMoreLoading.value = true
+  giftError.value = ''
+  try {
+    await fetchGifts(giftPage.value + 1)
+  } catch {
+    giftError.value = '没取到更早的记录，再试一下。'
+  } finally {
+    giftMoreLoading.value = false
+  }
+}
+
+const sendGift = async () => {
+  if (giftSending.value || !giftRecipient.value || !giftItem.value) return
+  const item = myDecorations.value.find(item => item.id === Number(giftItem.value))
+  const friend = friends.value.find(friend => friend.id === Number(giftRecipient.value))
+  if (!item || !friend) return
+  if (!confirm(`把「${item.name}」送给 ${friend.username}？送出后物品归对方。`)) return
+  const payload = { senderId: user.value.id, recipientId: Number(giftRecipient.value), userDecorationId: Number(giftItem.value), message: giftMessage.value }
+  const signature = JSON.stringify(payload)
+  if (!giftRetry || giftRetry.signature !== signature) giftRetry = { signature, requestId: crypto.randomUUID() }
+  giftSending.value = true
+  giftError.value = ''
+  giftNotice.value = ''
+  try {
+    const res = await axios.post(`${API_BASE}/api/v1/gifts`, { ...payload, requestId: giftRetry.requestId })
+    if (!res.data.success) {
+      giftError.value = res.data.message
+      return
+    }
+    giftNotice.value = res.data.message
+    giftRetry = null
+    giftItem.value = ''
+    giftMessage.value = ''
+    giftTab.value = 'SENT'
+    await Promise.all([loadMyDecorations(), loadDecorations(), loadDecorationStates(), fetchGifts()])
+  } catch {
+    giftError.value = '暂时没确认送达。可以重试，同一份赠礼不会重复送出。'
+  } finally {
+    giftSending.value = false
   }
 }
 
